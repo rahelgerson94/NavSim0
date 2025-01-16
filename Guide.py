@@ -20,14 +20,14 @@ class Guide:
         angleBtwPursuerLosRad = self.Lrad + pursuerObj.HErad
         self.los2pursuerDcm = np.array([[cos(angleBtwPursuerLosRad), sin(angleBtwPursuerLosRad)],
                                   [     -sin(angleBtwPursuerLosRad),     cos(angleBtwPursuerLosRad)]])
-        print(f"los2pDcm.shape: {self.los2pursuerDcm.shape}")
+        #print(f"los2pDcm.shape: {self.los2pursuerDcm.shape}")
         self.los2inertialDcm = np.array([[cos(self.lamdaRad), sin(self.lamdaRad)],
                                   [      -sin(self.lamdaRad), cos(self.lamdaRad)]])
-        print(f"los2inertialDcm.shape: {self.los2inertialDcm.shape}")
+        #print(f"los2inertialDcm.shape: {self.los2inertialDcm.shape}")
         angleBtwPursuerInertialRad = pursuerObj.HErad + self.Lrad + self.lamdaFromDeRad
         self.pursuer2inertialDcm = np.array([[cos(angleBtwPursuerInertialRad), sin(angleBtwPursuerInertialRad)],
                                   [          -sin(angleBtwPursuerInertialRad), cos(angleBtwPursuerInertialRad)]])
-        print(f"pursuer2inertialDcm.shape: {self.pursuer2inertialDcm.shape}")
+        #print(f"pursuer2inertialDcm.shape: {self.pursuer2inertialDcm.shape}")
     def updateStates(self, pursuerObj, targetObj):
 
         #the states are output by pursuer, target in the intertial frames
@@ -41,17 +41,17 @@ class Guide:
         Vrel = Vt - Vp  
         RrelNorm = norm(Rrel)
         
-        self.lamdaRad = arctan2(Rrel[1],Rrel[0])
+        self.lamdaRad = np.arctan2(Rrel[1],Rrel[0])
         lamdaDot = (Rrel[0]*Vrel[1] - Rrel[1]*Vrel[0]) / RrelNorm**2
-        self.lamdaFromDeRad += lamdaDot*self.dt
-        arg1 = sin(targetObj.betaRad + self.lamdaFromDeRad)*Vt/Vp
+        self.lamdaFromDeRad = self.lamdaFromDeRad + lamdaDot*self.dt
+        arg1 = sin(targetObj.betaRad + self.lamdaFromDeRad)*norm(Vt)/norm(Vp)
         self.L = arcsin(arg1) - pursuerObj.HErad
 
         
         
         self.VcInI = -(Rrel[0] * Vrel[0] - (Rrel[1] * Vrel[1]) )  / RrelNorm
         
-        self.aPureInLos = array([ 0,  self.N*lamdaDot*self.VcInI])
+        self.aPureInLos = array([ 0,  self.N*lamdaDot*norm(self.VcInI)])
         
     def update(self,  pursuerObj, targetObj):
         self.updateStates( pursuerObj, targetObj)

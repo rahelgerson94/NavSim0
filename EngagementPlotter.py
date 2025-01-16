@@ -1,4 +1,4 @@
-import matplotlib as plt
+import matplotlib.pyplot as plt
 from numpy import allclose
 class EngagementPlotter:
     def __init__(self):
@@ -26,7 +26,7 @@ class EngagementPlotter:
         pursuer_x, pursuer_y = zip(*truncated_pursuer)
 
         # Plot the truncated trajectories
-        plt.figure(figsize=(10, 6))
+        plt.figure()
         plt.plot(target_x, target_y, 'b-o', label='Target', linewidth=2, markersize=6)
         plt.plot(pursuer_x, pursuer_y, 'r-o', label='Pursuer', linewidth=2, markersize=6)
         plt.scatter(target_x[-1], target_y[-1], c='g', s=100, label='Collision Point', zorder=5)

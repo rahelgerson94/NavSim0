@@ -1,5 +1,4 @@
 import numpy as np
-from numpy import zeros 
 from RigidBody import RigidBody 
 from numpy import sin, cos, tan, pi, arctan2, arcsin, deg2rad, rad2deg
 from numpy import zeros, array
@@ -15,7 +14,7 @@ ppos = []
 pvel = []
 if __name__ == "__main__":
     
-    
+    engagementPlotter = EngagementPlotter()
     ######## define pursuer init orientation ##########
     pursuerAngleFromHorizontalDeg = 60
     pursuerAngleFromHorizontalRad = deg2rad(pursuerAngleFromHorizontalDeg)
@@ -38,12 +37,12 @@ if __name__ == "__main__":
     
     B0 = deg2rad(70) #Target heading
     at0 = array([.5, 0])
-    Vt0 = VtMag* array([-cos(targetAngleFromHorizontal),  #TODO: implement different, less ideal angles from pursuer
-                        sin(targetAngleFromHorizontal)])
+    Vt0 = VtMag* array([cos(targetAngleFromHorizontal),  #TODO: implement different, less ideal angles from pursuer
+                        -sin(targetAngleFromHorizontal)])
     Rt0 = array([35, 40])
     target = Target(at0, 
                     targetAngleFromHorizontal, 
-                    [Vt0, Rt0])
+                    [Rt0, Vt0])
     
     guide = Guide()
 
@@ -63,6 +62,7 @@ if __name__ == "__main__":
         pvel.append(pursuer.VinI)
         tpos.append(target.RinI)
         tvel.append(target.VinI)
-    EngagementPlotter.plotCollision(ppos, tpos)
+    #engagementPlotter.plotCollision(ppos, tpos)
+    
     
         
