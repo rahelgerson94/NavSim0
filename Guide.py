@@ -1,71 +1,74 @@
 import numpy as np
 from numpy import sin, cos, tan, pi, arctan2, arcsin, deg2rad
-from numpy import zeros, matmul, inv
-from numpy.linalg import norm
+from numpy import zeros, matmul, array
+from numpy.linalg import norm, inv
 from Vehicle import Pursuer
 from Vehicle import Target
 
 class Guide:
     def __init__(self, N=3, dt = 1/100):
-        self.L = 0 #look angle
-        self.lamda = 0 # line of sight angle 
-        self.lamdaDot = 0
-        self.Vc = 0
+        self.Lrad = 0 #look angle
+        self.lamdaRad = 0 # line of sight angle 
+        self.lamdaFromDeRad = 0
+        self.VcInI = 0
         self.dt = dt 
         self.N = N
-        self.aPureExLos = 0
+        self.aPureInLos = 0
         self.aPureinP = 0
-    def updateDcms(self):
-         ### update the DCMs ###
-        anglePurserLos = np.deg2rad(self.L + pursuerObj.HE)
-        self.los2purserDcm = np.array([[cos(anglePurserLos), sin(anglePurserLos)],
-                                  [-sin(anglePurserLos), cos(anglePurserLos)]])
-        
-        lamdaRad = np.deg2rad(self.lamda)
-        self.los2inertialDcm = np.array([[cos(lamdaRad), sin(lamdaRad)],
-                                  [      -sin(lamdaRad), cos(lamdaRad)]])
-        
-        anglePursuerInertialRad = deg2rad(pursuerObj.HE + self.L + self.lamda)
-        self.pursuer2inertialDcm = np.array([[cos(anglePursuerInertialRad), sin(anglePursuerInertialRad)],
-                                  [          -sin(anglePursuerInertialRad), cos(anglePursuerInertialRad)]])
-        
+    def updateDcms(self,pursuerObj, targetObj ):
+         ### update the DCMs ##
+        angleBtwPursuerLosRad = self.Lrad + pursuerObj.HErad
+        self.los2pursuerDcm = np.array([[cos(angleBtwPursuerLosRad), sin(angleBtwPursuerLosRad)],
+                                  [     -sin(angleBtwPursuerLosRad),     cos(angleBtwPursuerLosRad)]])
+        print(f"los2pDcm.shape: {self.los2pursuerDcm.shape}")
+        self.los2inertialDcm = np.array([[cos(self.lamdaRad), sin(self.lamdaRad)],
+                                  [      -sin(self.lamdaRad), cos(self.lamdaRad)]])
+        print(f"los2inertialDcm.shape: {self.los2inertialDcm.shape}")
+        angleBtwPursuerInertialRad = pursuerObj.HErad + self.Lrad + self.lamdaFromDeRad
+        self.pursuer2inertialDcm = np.array([[cos(angleBtwPursuerInertialRad), sin(angleBtwPursuerInertialRad)],
+                                  [          -sin(angleBtwPursuerInertialRad), cos(angleBtwPursuerInertialRad)]])
+        print(f"pursuer2inertialDcm.shape: {self.pursuer2inertialDcm.shape}")
     def updateStates(self, pursuerObj, targetObj):
 
-        #the states are output by purser, target in the intertial frames
-        Vt = targetObj.V
-        Vp = pursuerObj.V
-        Rt = targetObj.R
-        Rp = pursuerObj.R 
+        #the states are output by pursuer, target in the intertial frames
+        Vt = targetObj.VinI
+        Vp = pursuerObj.VinI
+        Rt = targetObj.RinI
+        Rp = pursuerObj.RinI 
 
 
         Rrel = Rt - Rp  
         Vrel = Vt - Vp  
-
-        self.lamda = arctan2(Rrel[1]/Rrel[0])
-        arg1 = sin(deg2rad(targetObj.beta + pursuerObj.lamda))*Vt/Vp
-        self.L = arcsin(arg1) - pursuerObj.HE
-
         RrelNorm = norm(Rrel)
         
-        self.Vc = -(Rrel[0] * Vrel[0] - (Rrel[1] * Vrel[1]) )  / RrelNorm
-        self.lambdaDot = (Rrel[0] * Vrel[1] - (Rrel[0] * Vrel[1])) /  RrelNorm**2
-        self.aPureInLos = self.N*self.lamdaDot*self.Vc
+        self.lamdaRad = arctan2(Rrel[1],Rrel[0])
+        lamdaDot = (Rrel[0]*Vrel[1] - Rrel[1]*Vrel[0]) / RrelNorm**2
+        self.lamdaFromDeRad += lamdaDot*self.dt
+        arg1 = sin(targetObj.betaRad + self.lamdaFromDeRad)*Vt/Vp
+        self.L = arcsin(arg1) - pursuerObj.HErad
+
         
-    def update(self):
-        self.updateStates()
-        self.updateDcms()
+        
+        self.VcInI = -(Rrel[0] * Vrel[0] - (Rrel[1] * Vrel[1]) )  / RrelNorm
+        
+        self.aPureInLos = array([ 0,  self.N*lamdaDot*self.VcInI])
+        
+    def update(self,  pursuerObj, targetObj):
+        self.updateStates( pursuerObj, targetObj)
+        self.updateDcms( pursuerObj, targetObj)
     
     '''
     compute ProNav accel in the los frame
     '''
     def getApureInLos(self):
-        return self.N*self.lamdaDot*self.Vc
+        return self.aPureInLos
     '''
     provide the ProNav accel in the pursuer frame 
     '''
     def getApureInP(self):
-        return matmul(self.los2purserDcm, self.aPureInLos)
+        return matmul(self.los2pursuerDcm, self.aPureInLos)
     def getLosAngle(self):
-        return self.los
+        return self.lamdaFromDeRad
     def getLookAngle(self):
         return self.L
+    
