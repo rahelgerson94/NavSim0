@@ -26,14 +26,11 @@ class EngagementPlotter:
         for t, p in zip(target_coords, pursuer_coords):
             truncated_target.append(t)
             truncated_pursuer.append(p)
-            if allclose(t,p):  # Collision point found
+            if np.abs(p[X] -  t[X]) <=  0.15 and\
+                np.abs(t[Z] - t[Z]) <= 0.15:
                 self.collisionPoint = array([t[0], t[1]])
                 print(f"collision at: ({self.collisionPoint[0]}, {self.collisionPoint[1]})")
-                break
-            
-        print("no collision found")
-        print(f"Rt(tf) = ({t[0]}, {t[1]})")
-        print(f"Rp(tf) = ({p[0]}, {p[1]})")       
+                break       
         # Unpack truncated coordinates
         target_x, target_y = zip(*truncated_target)
         pursuer_x, pursuer_y = zip(*truncated_pursuer)
@@ -56,7 +53,7 @@ class EngagementPlotter:
         names = {"A"}
         hists = {p.AinI}
         for i,n in enumerate(names):
-            plt.figure()
+            plt.figure(i)
             plt.plot(tvec, hists[i])
             plt.title(n)
             plt.legend()
@@ -77,12 +74,12 @@ class EngagementPlotter:
                  g.lookAngleHist,
                  g.RrelHist]
         for i, name in enumerate(names):
-            plt.figure()
+            plt.figure(i)
             plt.plot(tvec, hists[i])
             plt.title(name)
             plt.legend()
             plt.grid(True)
-            plt.show()
+        plt.show()
                 
     
         

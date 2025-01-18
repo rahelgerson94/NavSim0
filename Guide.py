@@ -19,9 +19,8 @@ class Guide:
         self.lamdaHist = []
         self.VcInIhist = []
         self.lookAngleHist = []
-        
         self.RrelHist = []
-
+        self.collisionLocationInI = np.inf
     def updateDcms(self,pursuerObj, targetObj ):
          ### update the DCMs ##
         angleBtwPursuerLosRad = self.Lrad 
@@ -95,3 +94,5 @@ class Guide:
         self.lookAngleHist.append(rad2deg(self.Lrad))
         
         self.RrelHist.append(Rrel)
+    def setCollisionPoint(self, coord):
+        self.collisionLocationInI = coord
