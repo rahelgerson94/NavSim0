@@ -53,7 +53,7 @@ if __name__ == "__main__":
     Rp0 = array([20, 0]) 
     VpMag = 5 #m/s
     Rrel0 = Rt0 - Rp0
-    HEdeg0 = 0
+    HEdeg0 = -20
     
     lamdaRad0 = arctan2(Rrel0[1],Rrel0[0])
     arg1 = sin(betaRad0 + lamdaRad0) * VtMag/VpMag
