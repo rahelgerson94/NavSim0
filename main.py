@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from RigidBody import RigidBody 
 from numpy import sin, cos, tan, pi, arctan2, arcsin, deg2rad, rad2deg
 from numpy import zeros, array
@@ -12,38 +13,60 @@ tpos = []
 tvel = []
 ppos = []
 pvel = []
+paccel = []
+lamdaThist = []
+betaThist = []
+RrelThist = []
+vRelHist = []
+vrelHist = []
+losRateHist = []
+def appendVars(p, t, g):
+    betaThist.append(t.betaRad)
+    lamdaThist.append(guide.lamdaRad)
+    ppos.append(p.RinI)
+    pvel.append(p.VinI)
+    paccel.append(p.AinI)
+    tpos.append(t.RinI)
+    tvel.append(t.VinI)
+    RrelThist.append(t.RinI - p.RinI)
+    vrelHist.append(g.VcInI)
+    losRateHist.append(g.lamdaDot)
 if __name__ == "__main__":
     
     engagementPlotter = EngagementPlotter()
+ 
+    ######### define target init orientation ########
+    betaDeg0 = 110
+    betaRad0 = deg2rad(betaDeg0)
+    VtMag = 5 #m/s
+    
+    at0 = array([0, 0])
+    Vt0 = VtMag* array([cos(betaRad0),  #TODO: implement different, less ideal angles from pursuer
+                        sin(betaRad0)])
+    Rt0 = array([60, 16])
+    target = Target(at0, 
+                    betaDeg0, 
+                    [Rt0, Vt0])
     ######## define pursuer init orientation ##########
-    pursuerAngleFromHorizontalDeg = 60
-    pursuerAngleFromHorizontalRad = deg2rad(pursuerAngleFromHorizontalDeg)
-    HEdeg0 = (10)
-    lamda0 = deg2rad(20) #los angle from horizonatal
-    VpMag = 5 #m/s
-    ap0 = array([1, 0]) 
-    Vp0 = VpMag* array([cos(pursuerAngleFromHorizontalRad), 
-                        sin(pursuerAngleFromHorizontalRad)])
     Rp0 = array([20, 0]) 
+    VpMag = 7 #m/s
+    Rrel0 = Rt0 - Rp0
+    HEdeg0 = -10
+    
+    lamdaRad0 = arctan2(Rrel0[1],Rrel0[0])
+    arg1 = sin(betaRad0 + lamdaRad0) * VtMag/VpMag
+    L0 = arcsin(arg1) 
+    pursuerAngleFromHorizontalRad = L0 + lamdaRad0 
+
+    
+    ap0 = array([0, 0]) 
+    Vp0 = VpMag* array([cos(pursuerAngleFromHorizontalRad + deg2rad(HEdeg0)), 
+                        sin(pursuerAngleFromHorizontalRad + deg2rad(HEdeg0))])
+    
     pursuer = Pursuer(ap0, 
-                      pursuerAngleFromHorizontalDeg,
-                      HEdeg0, 
+                      rad2deg(pursuerAngleFromHorizontalRad), 
                       [Rp0, Vp0]
                     )
-    
-    ######### define target init orientation ########
-    targetAngleFromHorizontal = deg2rad(110)
-    VtMag = 4 #m/s
-    
-    B0 = deg2rad(70) #Target heading
-    at0 = array([.5, 0])
-    Vt0 = VtMag* array([cos(targetAngleFromHorizontal),  #TODO: implement different, less ideal angles from pursuer
-                        -sin(targetAngleFromHorizontal)])
-    Rt0 = array([35, 40])
-    target = Target(at0, 
-                    targetAngleFromHorizontal, 
-                    [Rt0, Vt0])
-    
     guide = Guide()
 
     tstart = 0
@@ -51,18 +74,36 @@ if __name__ == "__main__":
     dt = .001
 
     tvec = np.linspace(tstart, tend, int(tend/dt))
+    # tvec = []
+    # idx = 0
     for i in tvec:
         guide.update(pursuer,target)
         
-        pursuer.update(guide.getApureInP(), #proNav aceel in pursuer frame
-                       guide.getLosAngle(), # line of sight angle
-                       guide.getLookAngle()) 
+        pursuer.update(guide.getApureInI(), #proNav aceel in pursuer frame
+                       guide.getLosAngleRad(), # line of sight angle
+                       guide.getLookAngleRad()) 
         target.update()
-        ppos.append(pursuer.RinI)
-        pvel.append(pursuer.VinI)
-        tpos.append(target.RinI)
-        tvel.append(target.VinI)
-    #engagementPlotter.plotCollision(ppos, tpos)
+        appendVars(pursuer, target, guide)
+    engagementPlotter.plotCollision(ppos, tpos)
+    missIdx =  np.argmin(np.abs(RrelThist))
+    h = dt
+    dtIdx = int(.1/h)
+    plt.figure()
+    plt.plot(tvec, paccel)
+    plt.show()
+    
+
+    # engagementPlotter.plotEngagementFullScale( tvec, 
+    #                                dtIdx, 
+    #                                missIdx,
+    #                                betaThist,
+    #                                [ppos, pvel],
+    #                                [tpos, tvel],
+    #                                'True')
+        
+    #print(f"collision at: ({engagementPlotter.collisionPoint[0]}, {engagementPlotter.collisionPoint[1]})")
+
+  
     
     
         
