@@ -11,7 +11,7 @@ class EngagementPlotter:
     def __init__(self):
         self.collisionPoint = array([np.inf,np.inf])
         
-    def plotCollision(self, target_coords, pursuer_coords):
+    def plotCollision(self, target_coords, pursuer_coords, title=""):
         """
         Plots the trajectories of the target and pursuer and stops at the collision point.
 
@@ -49,19 +49,23 @@ class EngagementPlotter:
         plt.grid(True)
         plt.axis('equal')  # Ensures equal scaling for x and y axes
         plt.show()
-    def plotPursuerVars(self, tvec, p):
+    def plotPursuerVars(self, tvec, p, title=""):
         names = {"A"}
         hists = {p.AinI}
         for i,n in enumerate(names):
-            plt.figure(i)
+            plt.figure(i+1)
             plt.plot(tvec, hists[i])
-            plt.title(n)
+            if len(name) >0:
+                plt.title(f"{title}: {n}")
+            else:
+                plt.title(n)
             plt.legend()
             plt.grid(True)
             plt.show()
         
-    def plotGuideVars(self, tvec, g):
-        
+    def plotGuideVars(self, tvec, g, title=""):
+
+
         names = {"d/dt(λ) (deg/s)",
                  "λ (deg)",
                  "Vc (m/s)",
@@ -75,8 +79,13 @@ class EngagementPlotter:
                  g.RrelHist]
         for i, name in enumerate(names):
             plt.figure(i)
+            
             plt.plot(tvec, hists[i])
-            plt.title(name)
+            
+            if len(name) >0:
+                plt.title(f"{title}: {name}")
+            else:
+                plt.title(name)
             plt.legend()
             plt.grid(True)
         plt.show()

@@ -84,7 +84,7 @@ class Guide:
     def getLookAngleRad(self):
         return self.Lrad
     def getLookAngleDeg(self):
-        return rad2deg(self.L)
+        return rad2deg(self.Lrad)
     def getVcInI(self):
         return self.VcInI
     def appendVars(self, Rrel):
