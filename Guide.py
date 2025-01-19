@@ -10,14 +10,14 @@ class Guide:
         self.Lrad = 0 #look angle
         self.lamdaRad = 0 # line of sight angle 
         self.lamdaDot = 0
-        self.VcInI = 100000
+        self.Vc = 100000
         self.dt = dt 
         self.N = N
         self.aPureInLos = 0
         self.aPureinP = 0
         self.lamdaDotHist = []
         self.lamdaHist = []
-        self.VcInIhist = []
+        self.VcHist = []
         self.lookAngleHist = []
         self.RrelHist = []
         self.collisionLocationInI = np.inf
@@ -37,10 +37,10 @@ class Guide:
     def updateStates(self, pursuerObj, targetObj):
 
         #the states are output by pursuer, target in the intertial frames
-        Vt = targetObj.VinI
-        Vp = pursuerObj.VinI
-        Rt = targetObj.RinI
-        Rp = pursuerObj.RinI 
+        Vt = targetObj.vInI
+        Vp = pursuerObj.vInI
+        Rt = targetObj.rInI
+        Rp = pursuerObj.rInI 
 
 
         Rrel = Rt - Rp  
@@ -55,10 +55,10 @@ class Guide:
 
         
         
-        self.VcInI = -(Rrel[0] * Vrel[0] - (Rrel[1] * Vrel[1]) )  / RrelNorm
+        self.Vc = -(Rrel[0] * Vrel[0] - (Rrel[1] * Vrel[1]) )  / RrelNorm
         
         
-        self.aPureInLos = array([ 0,  self.N*self.lamdaDot*norm(self.VcInI)])
+        self.aPureInLos = array([ 0,  self.N*self.lamdaDot*norm(self.Vc)])
         self.appendVars(Rrel)
     def update(self,  pursuerObj, targetObj):
         self.updateStates( pursuerObj, targetObj)
@@ -85,12 +85,12 @@ class Guide:
         return self.Lrad
     def getLookAngleDeg(self):
         return rad2deg(self.Lrad)
-    def getVcInI(self):
-        return self.VcInI
+    def getVc(self):
+        return self.Vc
     def appendVars(self, Rrel):
         self.lamdaDotHist.append(rad2deg(self.lamdaDot))
         self.lamdaHist.append(rad2deg(self.lamdaRad))
-        self.VcInIhist.append(self.VcInI)
+        self.VcHist.append(self.Vc)
         self.lookAngleHist.append(rad2deg(self.Lrad))
         
         self.RrelHist.append(Rrel)

@@ -74,7 +74,7 @@ class EngagementPlotter:
                  }
         hists = [g.lamdaDotHist,
                  g.lamdaHist,
-                 g.VcInIhist,
+                 g.VcHist,
                  g.lookAngleHist,
                  g.RrelHist]
         for i, name in enumerate(names):
@@ -88,11 +88,7 @@ class EngagementPlotter:
                 plt.title(name)
             plt.legend()
             plt.grid(True)
-        plt.show()
-                
-    
-        
-            
+        plt.show()     
         # Define functions for plotting engagement
         
     def plotEngagementFullScale(self, 
