@@ -4,12 +4,19 @@ from numpy import zeros, matmul, array
 from numpy.linalg import norm, inv
 from Vehicle import Pursuer
 from Vehicle import Target
+from math import asin
+
 X = 0
 Z = 1
 R = 0
 V = 1
 class Guide:
-    def __init__(self, HEdeg = -20, N=3, dt = 1/100, mode = 'pure'):
+    def __init__(self, pursuerObj, 
+                 targetObj, 
+                 HEdeg = -20, 
+                 N=3, 
+                 dt = 1/100, 
+                 mode = 'pure'):
         self.Lrad = 0 #look angle
         self.lamdaRad = 0 # line of sight angle 
         self.lamdaDot = 0
@@ -27,7 +34,11 @@ class Guide:
         self.HErad = deg2rad(HEdeg)
         self.collisionLocationInI = np.inf
         self.Rrel = 0
-    def updateDcms(self,pursuerObj, targetObj ):
+        self.target = targetObj
+        self.pursuer = pursuerObj
+        self.update()
+        
+    def updateDcms(self ):
          ### update the DCMs ##
         angleBtwPursuerLosRad = self.Lrad + self.HErad
         self.pursuer2los = np.array([[cos(angleBtwPursuerLosRad), -sin(angleBtwPursuerLosRad)],
@@ -40,13 +51,14 @@ class Guide:
         self.pursuer2inertialDcm = np.array([[cos(angleBtwPursuerInertialRad), -sin(angleBtwPursuerInertialRad)],
                                   [          sin(angleBtwPursuerInertialRad), cos(angleBtwPursuerInertialRad)]])
         #print(f"pursuer2inertialDcm.shape: {self.pursuer2inertialDcm.shape}")
-    def updateStates(self, pursuerObj, targetObj):
-
+    def updateStates(self):
+        self.target.printStates("target")
+        self.pursuer.printStates("pursuer")
         #the states are output by pursuer, target in the intertial frames
-        Vt = targetObj.vInI
-        Vp = pursuerObj.vInI
-        Rt = targetObj.rInI
-        Rp = pursuerObj.rInI 
+        Vt = self.target.vInI
+        Vp = self.pursuer.vInI
+        Rt = self.target.rInI
+        Rp = self.pursuer.rInI 
 
         self.Rrel = Rt - Rp
         
@@ -55,9 +67,12 @@ class Guide:
         
         self.lamdaRad = np.arctan2(self.Rrel[Z],self.Rrel[X])
         self.lamdaDot = (self.Rrel[X]*Vrel[Z] - self.Rrel[Z]*Vrel[X]) / RrelNorm**2
-        arg1 = sin(targetObj.betaRad + self.lamdaRad)*norm(Vt)/norm(Vp)
-        self.Lrad = arcsin(arg1) 
-
+        betaLamda = (self.target.betaRad + self.lamdaRad)
+        VT = norm(Vt)
+        VP = norm(Vp)
+        self.Lrad = asin(VT/VP*sin(betaLamda))
+        print(f"betaLamda: {rad2deg(betaLamda)}")
+        print(f"VT/VP: {VT/VP}")
         
         
         self.Vc = -(self.Rrel[X] * Vrel[X] - (self.Rrel[Z] * Vrel[Z]) )  / RrelNorm
@@ -66,9 +81,9 @@ class Guide:
         self.aTrueMag =  self.N*self.lamdaDot*norm(self.Vc) 
         self.aPureMag = self.N*self.lamdaDot*Vp
         self.appendVars()
-    def update(self,  pursuerObj, targetObj):
-        self.updateStates( pursuerObj, targetObj)
-        self.updateDcms( pursuerObj, targetObj)
+    def update(self):
+        self.updateStates( )
+        self.updateDcms()
     
     '''
     compute ProNav accel in the los frame
