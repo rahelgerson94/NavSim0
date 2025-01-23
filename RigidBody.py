@@ -17,7 +17,7 @@ class RigidBody:
         self.dt = dt
     def integrate(self, fx):
         pass
-    def storeStates(self, fx):
+    def storeStates(self ):
         self.aInIhist.append(self.aInI)
         self.vInIhist.append(self.vInI)
         self.rInIhist.append(self.rInI)

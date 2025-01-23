@@ -17,14 +17,8 @@ class Target(RigidBody):
         self.betaRad =  deg2rad(targetAngleFromHorizontalDeg)
         self.IB = np.array([[-cos(self.betaRad), sin(self.betaRad)],
                              [sin(self.betaRad),  cos(self.betaRad)]])
-        
-        self.rInT = matmul(self.IB.T, initState[0])
-        self.vInT = array(initState[1]) # target vel in the BODY (T) frame 
-        self.aInT = np.array(accel0InT) # target accel in the BODY (T) frame 
-        
         self.rInI = array(initState[0]) # target pos in the inertial frame 
-        self.vInI = matmul(self.IB, self.vInT)
-        self.aInI = matmul(self.IB, self.aInT)
+        self.toInertial(accel0InT, initState[1])
         self.dt = dt
         self.w = w
         self.t = 0
@@ -38,36 +32,18 @@ class Target(RigidBody):
 
     def update(self):
         self.t += self.dt
-        betaDot = norm(self.aInT) / norm(self.vInT)
+        betaDot = norm(self.aInI) / norm(self.vInI)
         self.betaRad = self.betaRad + betaDot*self.dt
         
         self.IB = np.array([[-cos(self.betaRad), sin(self.betaRad)],
                             [sin(self.betaRad),   cos(self.betaRad)]])
         #update target state vars. note for const velcoty, this is
         #unecessary
-        self.aInT = array([0, norm(self.aInT)])
-        self.vInT = self.vInT + self.aInT*self.dt
-        self.rInT = self.rInT + self.vInT*self.dt
         
-        ### inertial frames via dcms
-        self.aInI = matmul(self.IB, self.aInT)
-        self.vInI = matmul(self.IB, self.vInT)
-        self.rInI = matmul(self.IB, self.rInT)
-        
-        
-
-        #compute states via incrementation / provided formulas
-        accelZ = self.aInT[1]
-        aInI = array([accelZ*sin(self.betaRad), 
-                               accelZ*cos(self.betaRad)])
-        
-        vInI = self.vInI + self.aInI*self.dt
-        rInI = self.rInI + self.vInI*self.dt
-        ### append the dcm computed states to 
-        #see if they are euqal to the states computed via incrmemnt 
-        self.aInIHist.append(aInI)
-        self.vInIHist.append(vInI)
-        self.rInIHist.append(rInI)
+        #self.aInI = matmul(self.IB, self.aInT)
+        self.vInI = self.vInI + self.aInI*self.dt
+        self.rInI = self.rInI + self.vInI*self.dt
+        self.storeStates()
         
     def getBetaDeg(self):
         return rad2deg(self.betaRad)
@@ -101,7 +77,7 @@ class Pursuer(RigidBody):
     def update(self, accelCmdInI, lamda, Lrad):
         self.aInI = accelCmdInI
         self.angleFromHorizontalRad = ( Lrad + lamda + self.HErad)
-        print(f"In update: self.angleFromHorizontal: {rad2deg(self.angleFromHorizontalRad)}")
+        #print(f"In update: self.angleFromHorizontal: {rad2deg(self.angleFromHorizontalRad)}")
         
         ## guidance will pass the accel command in the pursuer frame!!
 

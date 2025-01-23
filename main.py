@@ -46,7 +46,7 @@ if __name__ == "__main__":
     betaDeg0 = 30
     betaRad0 = deg2rad(betaDeg0)
     VtMag = 2 #m/s
-    at0mag = 0
+    at0mag = .5
     AtInT0 = at0mag*array([0,at0mag]) #in the BODY frame
     VtInT0 = VtMag*array([1,0]) #in the BODY frame
     RtInI0 = array([60, 16]) #in the INERTIAL frame
@@ -58,10 +58,10 @@ if __name__ == "__main__":
     ######## define pursuer init orientation ##########
     RpInI0 = array([20, 0]) 
     VpInP0 = array([4,0])
-    ApInP0 = array([0, 1/2])
+    ApInP0 = array([0, 4])
     anglePursuerInertialDeg = 45
     
-    HEdeg0 = 0
+    HEdeg0 = -20
     Rrel0 = RtInI0 - RpInI0 
     pursuer = Pursuer(ApInP0, 
                       anglePursuerInertialDeg, 
@@ -69,9 +69,8 @@ if __name__ == "__main__":
                       [RpInI0, VpInP0],
                       dt = dt
                     )
-    printVeloRatio(target, pursuer)
-    guide = Guide(pursuer, target, N=4.5, dt = dt, HEdeg = HEdeg0)
-    printVeloRatio(target, pursuer)
+    #printVeloRatio(target, pursuer)
+    guide = Guide(pursuer, target, N=4, dt = dt, HEdeg = HEdeg0)
     print(f"Vt/p: {target.vInI - pursuer.vInI}")
     lamda = computeAngleBtwVecsDeg((target.rInI - pursuer.rInI), [1, 0]) 
     print(f"manual λ (deg):{lamda}")
@@ -83,8 +82,8 @@ if __name__ == "__main__":
     tvec = np.linspace(tstart, tend, int(tend/dt))
     tvec2 = []
     n = 0
-    while (guide.getVc()) > 10:
-        
+    while (guide.getVc()) > 0:
+
     #for t in tvec:
         guide.update()
             
@@ -100,7 +99,7 @@ if __name__ == "__main__":
                 
         tvec2.append(n*dt)
         n+=1
-    print(f"Vc({n}: {guide.getVc()})")
+    print(f"Vc({n}): {guide.getVc()}")
     guide.setCollisionPoint(array(pursuer.rInI[X],pursuer.rInI[Z] ))
     print(f"collision at: ({pursuer.rInI[0]}, {pursuer.rInI[1]})")
     engagementPlotter.plotCollision(tpos, ppos)

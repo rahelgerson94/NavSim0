@@ -36,7 +36,10 @@ class Guide:
         self.Rrel = 0
         self.target = targetObj
         self.pursuer = pursuerObj
+        
         self.update()
+        self.target.printStates("target")
+        self.pursuer.printStates("pursuer")
         
     def updateDcms(self ):
          ### update the DCMs ##
@@ -52,8 +55,7 @@ class Guide:
                                   [          sin(angleBtwPursuerInertialRad), cos(angleBtwPursuerInertialRad)]])
         #print(f"pursuer2inertialDcm.shape: {self.pursuer2inertialDcm.shape}")
     def updateStates(self):
-        self.target.printStates("target")
-        self.pursuer.printStates("pursuer")
+        
         #the states are output by pursuer, target in the intertial frames
         Vt = self.target.vInI
         Vp = self.pursuer.vInI
@@ -71,8 +73,7 @@ class Guide:
         VT = norm(Vt)
         VP = norm(Vp)
         self.Lrad = asin(VT/VP*sin(betaLamda))
-        print(f"betaLamda: {rad2deg(betaLamda)}")
-        print(f"VT/VP: {VT/VP}")
+
         
         
         self.Vc = -(self.Rrel[X] * Vrel[X] - (self.Rrel[Z] * Vrel[Z]) )  / RrelNorm
