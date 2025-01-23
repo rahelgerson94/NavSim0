@@ -21,6 +21,14 @@ ppos = []
 pvel = []
 paccel = []
 losRateHist = []
+def computeAngleBtwVecsDeg(v1, v2):
+    v1 = array(v1)
+    v2 = array(v2)
+    return np.arccos((np.dot(v1,v2))/(norm(v2)*norm(v1)))*(180/pi)
+def printVeloRatio(tObj,pObj):
+    Vt = tObj.vInI
+    Vp = pObj.vInI
+    print(f"Vt/Vp: {norm(Vt)/norm(Vp)}")
 def appendVars(p, t, g):
 
     ppos.append(p.rInI)
@@ -40,7 +48,7 @@ if __name__ == "__main__":
     VtMag = 2 #m/s
     at0mag = 0
     AtInT0 = at0mag*array([0,at0mag]) #in the BODY frame
-    VtInT0 = VtMag*array([VtMag,0]) #in the BODY frame
+    VtInT0 = VtMag*array([1,0]) #in the BODY frame
     RtInI0 = array([60, 16]) #in the INERTIAL frame
     target = Target(AtInT0, 
                     betaDeg0, 
@@ -53,7 +61,7 @@ if __name__ == "__main__":
     ApInP0 = array([0, 1/2])
     anglePursuerInertialDeg = 45
     
-    HEdeg0 = 20
+    HEdeg0 = 0
     Rrel0 = RtInI0 - RpInI0 
     pursuer = Pursuer(ApInP0, 
                       anglePursuerInertialDeg, 
@@ -61,19 +69,25 @@ if __name__ == "__main__":
                       [RpInI0, VpInP0],
                       dt = dt
                     )
-    guide = Guide(N=4.5, dt = dt, HEdeg = HEdeg0)
-
+    printVeloRatio(target, pursuer)
+    guide = Guide(pursuer, target, N=4.5, dt = dt, HEdeg = HEdeg0)
+    printVeloRatio(target, pursuer)
+    print(f"Vt/p: {target.vInI - pursuer.vInI}")
+    lamda = computeAngleBtwVecsDeg((target.rInI - pursuer.rInI), [1, 0]) 
+    print(f"manual λ (deg):{lamda}")
+    print(f"Guide.L (deg): {guide.getLookAngleDeg()}")
+    print(f"Guide.λ (deg): {guide.getLosAngleDeg()}")
     tstart = 0
     tend = 6
 
     tvec = np.linspace(tstart, tend, int(tend/dt))
     tvec2 = []
     n = 0
-    while (guide.getVc()) > 0.5:
+    while (guide.getVc()) > 10:
         
     #for t in tvec:
-        guide.update(pursuer,target)
-        
+        guide.update()
+            
         pursuer.update(guide.getAtrueInI(), #proNav aceel in pursuer frame
                        guide.getLosAngleRad(), # line of sight angle
                        guide.getLookAngleRad()) 
