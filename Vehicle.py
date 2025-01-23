@@ -12,23 +12,30 @@ class Target(RigidBody):
                  initState, 
                  dt= 1/100,
                  w = 1,
-                 velocityFunc = None):
+                 aInIfunc = None, 
+                 vInIfunc = None,
+                 rInIfunc = None):
         super().__init__(dt)
+        self.aInB = accel0InT
         self.betaRad =  deg2rad(targetAngleFromHorizontalDeg)
         self.IB = np.array([[-cos(self.betaRad), sin(self.betaRad)],
                              [sin(self.betaRad),  cos(self.betaRad)]])
         self.rInI = array(initState[0]) # target pos in the inertial frame 
-        self.toInertial(accel0InT, initState[1])
+        if aInIfunc is None:
+            self.toInertial(accel0InT, initState[1])
+        
         self.dt = dt
         self.w = w
         self.t = 0
-        self.velocityFunc = velocityFunc
         self.aInIHist = []
         self.vInIHist = []
         self.rInIHist = []
+        self.aInIfunc = aInIfunc
+        self.vInIFunc = vInIfunc
+        self.rInIFunc = rInIfunc
     def setVelocityFunc(self, velocityFunc, w):
         self.w = w
-        self.velocityFunc = velocityFunc
+        self.vInIFunc = velocityFunc
 
     def update(self):
         self.t += self.dt
@@ -40,7 +47,7 @@ class Target(RigidBody):
         #update target state vars. note for const velcoty, this is
         #unecessary
         
-        #self.aInI = matmul(self.IB, self.aInT)
+        self.aInI = matmul(self.IB, self.aInB)
         self.vInI = self.vInI + self.aInI*self.dt
         self.rInI = self.rInI + self.vInI*self.dt
         self.storeStates()

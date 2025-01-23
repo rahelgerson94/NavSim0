@@ -15,6 +15,9 @@ class RigidBody:
         ])
 
         self.dt = dt
+        self.aInB = array([0,0,0])
+        self.vInB = array([0,0,0])
+        self.rInB = array([0,0,0])
     def integrate(self, fx):
         pass
     def storeStates(self ):
