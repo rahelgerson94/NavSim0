@@ -24,3 +24,8 @@ class RigidBody:
     def toInertial(self, aInB, vInB):
         self.aInI = matmul(self.IB, aInB)
         self.vInI = matmul(self.IB, vInB)
+    def printStates(self):
+        print(f"rInI: {self.rInI}")
+        print(f"vInI: {self.vInI}")
+        print(f"aInI: {self.aInI}")
+        print()
