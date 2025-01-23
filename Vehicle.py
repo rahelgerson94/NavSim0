@@ -71,6 +71,11 @@ class Target(RigidBody):
         
     def getBetaDeg(self):
         return rad2deg(self.betaRad)
+    def printStates(self, rbodyName=""):
+        print(f"------{rbodyName} states--------")
+        print(f"β (deg): {self.getBetaDeg()}")
+        super().printStates()
+        
 class Pursuer(RigidBody):
     def __init__(self, 
                  accel0InP,
@@ -104,6 +109,8 @@ class Pursuer(RigidBody):
         self.rInI = self.rInI + (self.vInI * self.dt)
         
         ####check that these are equalivant
-
-
-
+    def printStates(self, rbodyName=""):
+        print(f"------{rbodyName} states--------")
+        print(f"θp (deg): {rad2deg(self.angleFromHorizontalRad)}")
+        super().printStates()
+    
