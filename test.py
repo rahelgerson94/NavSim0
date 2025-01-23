@@ -37,7 +37,7 @@ class collisionTester:
         n = 0
         while self.guide.getVcInI() >= 0:           
             guide.update(pursuer,target) 
-            self.pursuer.update(self.guide.getApureInI(), #proNav aceel in self.pursuer frame
+            self.pursuer.update(self.guide.getAtrueInI(), #proNav aceel in self.pursuer frame
                         self.guide.getLosAngleRad(), # line of sight angle
                         self.guide.getLookAngleRad()) 
 

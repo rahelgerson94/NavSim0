@@ -48,38 +48,33 @@ if __name__ == "__main__":
                     dt = dt)
     
     ######## define pursuer init orientation ##########
-    Rp0 = array([20, 0]) 
-    VpMag = 5 #m/s
-    Rrel0 = RtInI0 - Rp0
-    HEdeg0 = -40
+    RpInI0 = array([20, 0]) 
+    VpInP0 = array([4,0])
+    ApInP0 = array([0, 1/2])
+    anglePursuerInertialDeg = 45
     
-    lamdaRad0 = arctan2(Rrel0[1],Rrel0[0])
-    arg1 = sin(betaRad0 + lamdaRad0) * VtMag/VpMag
-    L0 = arcsin(arg1) 
-    pursuerAngleFromHorizontalRad = L0 + lamdaRad0 
-    P2Idcm = array([-sin(lamdaRad0), cos(lamdaRad0)]) 
-    ap0mag = 1
-    ap0 = ap0mag*P2Idcm
-    Vp0 = VpMag* array([cos(pursuerAngleFromHorizontalRad + deg2rad(HEdeg0)), 
-                        sin(pursuerAngleFromHorizontalRad + deg2rad(HEdeg0))])
-    
-    pursuer = Pursuer(ap0, 
-                      rad2deg(pursuerAngleFromHorizontalRad), 
-                      [Rp0, Vp0],
+    HEdeg0 = 20
+    Rrel0 = RtInI0 - RpInI0 
+    pursuer = Pursuer(ApInP0, 
+                      anglePursuerInertialDeg, 
+                      HEdeg0 , 
+                      [RpInI0, VpInP0],
                       dt = dt
                     )
-    guide = Guide(N=4, dt = dt)
+    guide = Guide(N=4.5, dt = dt, HEdeg = HEdeg0)
 
     tstart = 0
-    tend = 8
+    tend = 6
 
     tvec = np.linspace(tstart, tend, int(tend/dt))
-    tvec = []
+    tvec2 = []
     n = 0
-    while guide.getVc() >= 0:
+    while (guide.getVc()) > 0.5:
+        
+    #for t in tvec:
         guide.update(pursuer,target)
         
-        pursuer.update(guide.getApureInI(), #proNav aceel in pursuer frame
+        pursuer.update(guide.getAtrueInI(), #proNav aceel in pursuer frame
                        guide.getLosAngleRad(), # line of sight angle
                        guide.getLookAngleRad()) 
 
@@ -89,8 +84,9 @@ if __name__ == "__main__":
             np.abs(pursuer.rInI[Z] - target.rInI[Z]) <= 0.1:
                 print("Rt/p getting small")
                 
-        tvec.append(n*dt)
+        tvec2.append(n*dt)
         n+=1
+    print(f"Vc({n}: {guide.getVc()})")
     guide.setCollisionPoint(array(pursuer.rInI[X],pursuer.rInI[Z] ))
     print(f"collision at: ({pursuer.rInI[0]}, {pursuer.rInI[1]})")
     engagementPlotter.plotCollision(tpos, ppos)

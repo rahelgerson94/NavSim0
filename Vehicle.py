@@ -1,6 +1,6 @@
 from RigidBody import RigidBody 
 import numpy as np
-from numpy import sin, cos, tan, pi, arctan2, arcsin, deg2rad, rad2deg
+from numpy import sin, cos, tan, pi, arctan2, arcsin, arccos, deg2rad, rad2deg
 from numpy import zeros, dot, matmul, cross, array
 from numpy.linalg import norm
 
@@ -13,17 +13,18 @@ class Target(RigidBody):
                  dt= 1/100,
                  w = 1,
                  velocityFunc = None):
+        super().__init__(dt)
         self.betaRad =  deg2rad(targetAngleFromHorizontalDeg)
-        self.T2I = np.array([[-cos(self.betaRad), sin(self.betaRad)],
+        self.IB = np.array([[-cos(self.betaRad), sin(self.betaRad)],
                              [sin(self.betaRad),  cos(self.betaRad)]])
         
-        self.rInT = matmul(self.T2I.T, initState[0])
+        self.rInT = matmul(self.IB.T, initState[0])
         self.vInT = array(initState[1]) # target vel in the BODY (T) frame 
         self.aInT = np.array(accel0InT) # target accel in the BODY (T) frame 
         
         self.rInI = array(initState[0]) # target pos in the inertial frame 
-        self.vInI = matmul(self.T2I, self.vInT)
-        self.aInI = matmul(self.T2I, self.aInT)
+        self.vInI = matmul(self.IB, self.vInT)
+        self.aInI = matmul(self.IB, self.aInT)
         self.dt = dt
         self.w = w
         self.t = 0
@@ -40,7 +41,7 @@ class Target(RigidBody):
         betaDot = norm(self.aInT) / norm(self.vInT)
         self.betaRad = self.betaRad + betaDot*self.dt
         
-        self.T2I = np.array([[-cos(self.betaRad), sin(self.betaRad)],
+        self.IB = np.array([[-cos(self.betaRad), sin(self.betaRad)],
                             [sin(self.betaRad),   cos(self.betaRad)]])
         #update target state vars. note for const velcoty, this is
         #unecessary
@@ -49,9 +50,9 @@ class Target(RigidBody):
         self.rInT = self.rInT + self.vInT*self.dt
         
         ### inertial frames via dcms
-        self.aInI = matmul(self.T2I, self.aInT)
-        self.vInI = matmul(self.T2I, self.vInT)
-        self.rInI = matmul(self.T2I, self.rInT)
+        self.aInI = matmul(self.IB, self.aInT)
+        self.vInI = matmul(self.IB, self.vInT)
+        self.rInI = matmul(self.IB, self.rInT)
         
         
 
@@ -72,26 +73,31 @@ class Target(RigidBody):
         return rad2deg(self.betaRad)
 class Pursuer(RigidBody):
     def __init__(self, 
-                 accel0InI,
+                 accel0InP,
                  pursuerAngleFromHorizontalDeg, 
+                 HEdeg,
                  initState, 
                  dt = 1/100):
-        self.angleFromHorizontalRad = deg2rad(pursuerAngleFromHorizontalDeg)
+        super().__init__(dt)
+        self.angleFromHorizontalRad = deg2rad(pursuerAngleFromHorizontalDeg) + deg2rad(HEdeg)
+        print(f"In c-tor: self.angleFromHorizontal: {rad2deg(self.angleFromHorizontalRad)}")
+        self.IB = np.array([[cos(self.angleFromHorizontalRad), -sin(self.angleFromHorizontalRad)],
+                            [sin(self.angleFromHorizontalRad), cos(self.angleFromHorizontalRad)]])
         self.rInI = array(initState[0]) # pursuer pos in the inertial frame 
-        self.vInI = array(initState[1]) # pursuer vel in the inertial frame 
-        self.aInI = accel0InI           # pursuer accel in the inertial frame 
+        self.toInertial(accel0InP, initState[1])
         self.dt = dt
+        self.HErad = deg2rad(HEdeg)
     def integrateRk4(self, accelCmd ):
         pass
     '''
         requires, lmabda,S L, accel from guidance
         -accel: [ap_x, ap_z]
     '''
-    def update(self, accelCmdInI, lamda, L):
+    def update(self, accelCmdInI, lamda, Lrad):
         self.aInI = accelCmdInI
-        self.angleFromHorizontal = ( L + lamda)
-        self.pursuer2inertialDcm = np.array([[cos(self.angleFromHorizontal), -sin(self.angleFromHorizontal)],
-                                  [          sin(self.angleFromHorizontal), cos(self.angleFromHorizontal)]])
+        self.angleFromHorizontalRad = ( Lrad + lamda + self.HErad)
+        print(f"In update: self.angleFromHorizontal: {rad2deg(self.angleFromHorizontalRad)}")
+        
         ## guidance will pass the accel command in the pursuer frame!!
 
         self.vInI = self.vInI + (self.aInI * self.dt)
