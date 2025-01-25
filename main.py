@@ -8,6 +8,7 @@ from Vehicle import Pursuer
 from Vehicle import Target
 from Guide import Guide
 from EngagementPlotter import EngagementPlotter
+import debug as db
 X = 0
 Z = 1
 R = 0
@@ -30,13 +31,6 @@ def printVeloRatio(tObj,pObj):
     Vp = pObj.vInI
     print(f"Vt/Vp: {norm(Vt)/norm(Vp)}")
 def appendVars(p, t, g):
-
-    ppos.append(p.rInI)
-    pvel.append(p.vInI)
-    paccel.append(p.aInI)
-    tpos.append(t.rInI)
-    tvel.append(t.vInI)
-    taccel.append(t.aInI)
     losRateHist.append(g.lamdaDot)
 if __name__ == "__main__":
     
@@ -46,7 +40,7 @@ if __name__ == "__main__":
     betaDeg0 = 30
     betaRad0 = deg2rad(betaDeg0)
     VtMag = 2 #m/s
-    at0mag = .5
+    at0mag = 1/2
     AtInT0 = at0mag*array([0,at0mag]) #in the BODY frame
     VtInT0 = VtMag*array([1,0]) #in the BODY frame
     RtInI0 = array([60, 16]) #in the INERTIAL frame
@@ -61,7 +55,7 @@ if __name__ == "__main__":
     ApInP0 = array([0, 4])
     anglePursuerInertialDeg = 45
     
-    HEdeg0 = -20
+    HEdeg0 = 0
     Rrel0 = RtInI0 - RpInI0 
     pursuer = Pursuer(ApInP0, 
                       anglePursuerInertialDeg, 
@@ -72,6 +66,7 @@ if __name__ == "__main__":
     #printVeloRatio(target, pursuer)
     guide = Guide(pursuer, target, N=4, dt = dt, HEdeg = HEdeg0)
     print(f"Vt/p: {target.vInI - pursuer.vInI}")
+    print(f"guide.Vc: {guide.getVc()}")
     lamda = computeAngleBtwVecsDeg((target.rInI - pursuer.rInI), [1, 0]) 
     print(f"manual λ (deg):{lamda}")
     print(f"Guide.L (deg): {guide.getLookAngleDeg()}")
@@ -92,38 +87,21 @@ if __name__ == "__main__":
                        guide.getLookAngleRad()) 
 
         target.update()
-        appendVars(pursuer, target, guide)
+        
         if np.abs(pursuer.rInI[X] - target.rInI[X]) <=  0.1 and\
             np.abs(pursuer.rInI[Z] - target.rInI[Z]) <= 0.1:
                 print("Rt/p getting small")
                 
         tvec2.append(n*dt)
         n+=1
+    ep = EngagementPlotter()
+    #ep.plotVehiclesSubplots(tvec[0:n], pursuer, target)
+    # ep.plotVehicleStatesSubplots(tvec[0:n], pursuer, "pursuer", figNum = 0)
+    # ep.plotVehicleStatesSubplots(tvec[0:n], target, "target", figNum = 1)
     print(f"Vc({n}): {guide.getVc()}")
     guide.setCollisionPoint(array(pursuer.rInI[X],pursuer.rInI[Z] ))
     print(f"collision at: ({pursuer.rInI[0]}, {pursuer.rInI[1]})")
-    engagementPlotter.plotCollision(tpos, ppos)
+    engagementPlotter.plotCollision(target.rInIhist, pursuer.rInIhist)
     engagementPlotter.plotGuideVars(tvec[0:len(guide.lamdaDotHist)], guide)
     
-    # plt.figure(3)
-    # plt.plot(tvec, tpos,            label='incremented pos', linewidth=2, markersize=2)
-    # plt.plot(tvec, target.rInIHist, label='xformed pos', linewidth=2, markersize=2)
-    # plt.title("target pos")
-    # plt.legend()
-    # plt.show()
-    
-    
-    # plt.figure(1)
-    # plt.plot(tvec, tvel,            label='incremented velo', linewidth=2, markersize=2)
-    # plt.plot(tvec, target.vInIHist, label='xformed velo', linewidth=2, markersize=2)
-    # plt.title("target velocoty")
-    # plt.legend()
-    # plt.show()
-    
-    # plt.figure(2)
-    # plt.plot(tvec, taccel,           label='incremented accel', linewidth=2, markersize=2)
-    # plt.plot(tvec, target.aInIHist , label='xformed accel', linewidth=2, markersize=2)
-    # plt.title("target accel")
-    # plt.legend()
-    # plt.show()
     

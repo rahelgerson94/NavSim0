@@ -1,11 +1,12 @@
 import numpy as np
+import debug as db
+
 from numpy import sin, cos, tan, pi, arctan2, arcsin, deg2rad, rad2deg
 from numpy import zeros, matmul, array
 from numpy.linalg import norm, inv
 from Vehicle import Pursuer
 from Vehicle import Target
 from math import asin
-
 X = 0
 Z = 1
 R = 0
@@ -38,8 +39,8 @@ class Guide:
         self.pursuer = pursuerObj
         
         self.update()
-        self.target.printStates("target")
-        self.pursuer.printStates("pursuer")
+        # self.target.printStates("target")
+        # self.pursuer.printStates("pursuer")
         
     def updateDcms(self ):
          ### update the DCMs ##
@@ -72,17 +73,26 @@ class Guide:
         betaLamda = (self.target.betaRad + self.lamdaRad)
         VT = norm(Vt)
         VP = norm(Vp)
-        self.Lrad = asin(VT/VP*sin(betaLamda))
-
+        try:
+            self.Lrad = asin(VT/VP*sin(betaLamda))  
+        except ValueError as e:
+            print(f"Error: {e}")
+            print(f"Guide.L (deg): {self.getLookAngleDeg()}")
+            print(f"Guide.λ (deg): {self.getLosAngleDeg()}")
+            print(f"target.β (deg): {self.target.getBetaDeg()}")
+            print(f"|Vt|: {norm(self.target.vInI)}")
+            print(f"|Vp|: {norm(self.pursuer.vInI)}")
+            print(f"sin(λ+β)*VT/VP: {VT/VP*sin(betaLamda)}")
+        self.Vc = (-(self.Rrel[X] * Vrel[X]) - (self.Rrel[Z] * Vrel[Z]) )  / RrelNorm
         
         
-        self.Vc = -(self.Rrel[X] * Vrel[X] - (self.Rrel[Z] * Vrel[Z]) )  / RrelNorm
-        
-        
-        self.aTrueMag =  self.N*self.lamdaDot*norm(self.Vc) 
-        self.aPureMag = self.N*self.lamdaDot*Vp
+        self.aTrueMag =  self.N*self.lamdaDot * self.Vc
+        self.aPureMag =  self.N*self.lamdaDot  * VP
         self.appendVars()
+        # self.target.printStates("target")
+        # self.pursuer.printStates("pursuer")
     def update(self):
+        db.enter()
         self.updateStates( )
         self.updateDcms()
     

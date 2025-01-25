@@ -3,9 +3,9 @@ from numpy import sin, cos, tan, pi, arctan2, arcsin, deg2rad, rad2deg
 from numpy import zeros, matmul, array
 class RigidBody:
     def __init__(self, dt = 1/100):
-        self.rInI = array([0,0,0])
-        self.vInI = array([0,0,0])
-        self.aInI = array([0,0,0])
+        self.rInI = array([0,0])
+        self.vInI = array([0,0])
+        self.aInI = array([0,0])
         self.rInIhist = []
         self.vInIhist = []
         self.aInIhist = []
@@ -15,9 +15,9 @@ class RigidBody:
         ])
 
         self.dt = dt
-        self.aInB = array([0,0,0])
-        self.vInB = array([0,0,0])
-        self.rInB = array([0,0,0])
+        self.aInB = array([0,0])
+        self.vInB = array([0,0])
+        self.rInB = array([0,0])
     def integrate(self, fx):
         pass
     def storeStates(self ):
@@ -32,3 +32,4 @@ class RigidBody:
         print(f"vInI: {self.vInI}")
         print(f"aInI: {self.aInI}")
         print()
+    

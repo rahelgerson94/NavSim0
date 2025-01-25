@@ -49,20 +49,62 @@ class EngagementPlotter:
         plt.grid(True)
         plt.axis('equal')  # Ensures equal scaling for x and y axes
         plt.show()
-    def plotPursuerVars(self, tvec, p, title=""):
-        names = {"A"}
-        hists = {p.AinI}
+        
+    '''
+    @name:  plotVehicleStatesSubplots
+    @brief: plots a single vehicles accel, vel, pos 
+    '''
+    def plotVehicleStatesSubplots(self, tvec, v, title="", figNum = 0):
+        names = ["aInI", "vInI", "rInI"]
+        hists = [v.aInIhist, v.vInIhist, v.rInIhist]
+        states = ["a(t) m/s^2", "v(t) m/s", "r(t) m"]
+        plt.figure(figNum)
         for i,n in enumerate(names):
-            plt.figure(i+1)
-            plt.plot(tvec, hists[i])
-            if len(name) >0:
-                plt.title(f"{title}: {n}")
+            plt.subplot(3,1,i+1)
+            plt.plot(tvec,array(hists)[i][:, 0])
+            if len(title) >0:
+                plt.title(f"{title}: {states[i]}")
             else:
-                plt.title(n)
+                plt.title(f"Vehicle: {states[i]}")
             plt.legend()
             plt.grid(True)
-            plt.show()
+        plt.tight_layout()
+        plt.show()
+    
+    '''
+    @name:  plotVehiclesSubplots
+    @brief: plots pursuer accel, vel, pos in left col, and
+          target  accel, vel, pos in right col
+    '''
+    def plotVehiclesSubplots(self, tvec, p, t ):
+        names = ["aInI", "vInI", "rInI"]
+        PURSUER = 1
+        TARGET = 2
+        states = ["a(t) m/s^2", "v(t) m/s", "r(t) m"]
+        pursuer_states = [p.aInIhist, p.vInIhist, p.rInIhist]
+        target_states = [t.aInIhist, t.vInIhist, t.rInIhist ] 
+         
+        # Create a 3x2 grid of subplots
+        fig, axes = plt.subplots(3, 2, figsize=(10, 12))  # Adjust figsize as needed
         
+        
+        # Plot the data
+        for i, (pursuer, target) in enumerate(zip(pursuer_states, target_states)):
+            # Plot pursuer data in the first column
+            axes[i, 0].plot(tvec, pursuer, label="Pursuer")
+            #axes[i, 0].set_title(f"Pursuer {states[i]}")
+            axes[i, 0].set_xlabel("t (s)")
+            axes[i, 0].set_ylabel(states[i])
+            axes[i, 0].grid(True)
+            # Plot target data in the second column
+            axes[i, 1].plot(tvec, target, label="Target", color="orange")
+            #axes[i, 1].set_title(f"Target {states[i]}")
+            axes[i, 1].set_xlabel("t (s)")
+            axes[i, 1].set_ylabel(states[i])
+            axes[i, 1].grid(True)
+        # Add space between plots
+        plt.tight_layout()
+        plt.show()
     def plotGuideVars(self, tvec, g, title=""):
 
 
