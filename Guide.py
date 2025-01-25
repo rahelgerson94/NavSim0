@@ -7,6 +7,8 @@ from numpy.linalg import norm, inv
 from Vehicle import Pursuer
 from Vehicle import Target
 from math import asin
+from scipy.optimize import fsolve #to compute tgo using implicit formual
+
 X = 0
 Z = 1
 R = 0
@@ -56,6 +58,16 @@ class Guide:
         self.pursuer2inertialDcm = np.array([[cos(angleBtwPursuerInertialRad), -sin(angleBtwPursuerInertialRad)],
                                   [          sin(angleBtwPursuerInertialRad), cos(angleBtwPursuerInertialRad)]])
         #print(f"pursuer2inertialDcm.shape: {self.pursuer2inertialDcm.shape}")
+    def computeRelativeStates(self):
+        aRelInI = self.target.aInI - self.pursuer.aInI
+        vRelInI = self.target.vInI - self.pursuer.vInI
+        rRelInI = self.target.rInI - self.pursuer.rInI
+        return rRelInI, vRelInI, aRelInI
+    def computeTgo(self):
+        rRelInI, vRelInI, aRelInI = self.computeRelativeStates()
+        num = norm(rRelInI)
+         
+        denom = norm()
     def updateStates(self):
         
         #the states are output by pursuer, target in the intertial frames
@@ -65,12 +77,12 @@ class Guide:
         Rp = self.pursuer.rInI 
 
         self.Rrel = Rt - Rp
-        
+        Rrel, _, _ = self.computeRelativeStates()
         Vrel = Vt - Vp  
-        RrelNorm = norm(self.Rrel)
+        RrelNorm = norm(Rrel)
         
-        self.lamdaRad = np.arctan2(self.Rrel[Z],self.Rrel[X])
-        self.lamdaDot = (self.Rrel[X]*Vrel[Z] - self.Rrel[Z]*Vrel[X]) / RrelNorm**2
+        self.lamdaRad = np.arctan2(Rrel[Z],Rrel[X])
+        self.lamdaDot = (Rrel[X]*Vrel[Z] - Rrel[Z]*Vrel[X]) / RrelNorm**2
         betaLamda = (self.target.betaRad + self.lamdaRad)
         VT = norm(Vt)
         VP = norm(Vp)
