@@ -77,7 +77,7 @@ class Guide:
                     ( ((aRelInI[X]*tgo/2) + vRelInI[X])**2\
                      +((aRelInI[Z]*tgo/2) + vRelInI[Z])**2\
                     )**0.5
-        self.tgo = fsolve(f, self.tgo)
+        self.tgo = fsolve(f, self.tgo)[0]
     def updateStates(self):
         
         #the states are output by pursuer, target in the intertial frames
@@ -138,8 +138,10 @@ class Guide:
             array([-sin(angleBtwPursuerInertialRad),\
                    cos(angleBtwPursuerInertialRad)])
     def getAtrueZemInI(self):
-        self.updateTgo()
+        #self.updateTgo()
+        
         rRelInI, vRelInI, aRelInI = self.computeRelativeStates()
+        self.tgo = norm(rRelInI)/self.Vc
         apTrueZemMag = (self.N/self.tgo**2)*(rRelInI[Z] + vRelInI[Z]*self.tgo)
         aTrueZemInP = matmul(self.pursuer2los.T, array([0, apTrueZemMag]))
         angleLI = self.lamdaRad  #angle between los and inertial

@@ -11,7 +11,7 @@ class EngagementPlotter:
     def __init__(self):
         self.collisionPoint = array([np.inf,np.inf])
         
-    def plotCollision(self, target_coords, pursuer_coords, title=""):
+    def plotCollision(self, target_coords, pursuer_coords, title="", savefig=False):
         """
         Plots the trajectories of the target and pursuer and stops at the collision point.
 
@@ -20,6 +20,7 @@ class EngagementPlotter:
         - pursuer_coords: List of tuples representing the pursuer's (x, y) coordinates over time.
         """
         # Truncate at collision point
+        plt.close()
         truncated_target = []
         truncated_pursuer = []
 
@@ -42,13 +43,16 @@ class EngagementPlotter:
         plt.scatter(target_x[-1], target_y[-1], c='b', s=100, label='Collision Point', zorder=5)
 
         # Add labels, legend, and grid
-        plt.xlabel('X Coordinate')
-        plt.ylabel('Y Coordinate')
-        plt.title('Collision Plot: Target vs Pursuer (Stopped at Collision)')
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        plt.title(f'Target vs Pursuer, {title}')
         plt.legend()
         plt.grid(True)
         plt.axis('equal')  # Ensures equal scaling for x and y axes
-        plt.show()
+        if savefig:
+            plt.savefig(f"figs/{title}.png", dpi=300, bbox_inches='tight', transparent=True)
+        else:
+            plt.show()
         
     '''
     @name:  plotVehicleStatesSubplots

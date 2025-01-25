@@ -33,7 +33,7 @@ def printVeloRatio(tObj,pObj):
 def appendVars(p, t, g):
     losRateHist.append(g.lamdaDot)
 if __name__ == "__main__":
-    
+    N = 5
     engagementPlotter = EngagementPlotter()
  
     ######### define target init orientation ########
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     ApInP0 = array([0, 4])
     anglePursuerInertialDeg = 45
     
-    HEdeg0 = -50
+    HEdeg0 = -20
     Rrel0 = RtInI0 - RpInI0 
     pursuer = Pursuer(ApInP0, 
                       anglePursuerInertialDeg, 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
                       dt = dt
                     )
     #printVeloRatio(target, pursuer)
-    guide = Guide(pursuer, target, N=5, dt = dt, HEdeg = HEdeg0)
+    guide = Guide(pursuer, target, N=N, dt = dt, HEdeg = HEdeg0)
     print(f"Vt/p: {target.vInI - pursuer.vInI}")
     print(f"guide.Vc: {guide.getVc()}")
     lamda = computeAngleBtwVecsDeg((target.rInI - pursuer.rInI), [1, 0]) 
@@ -75,16 +75,15 @@ if __name__ == "__main__":
     tend = 6
 
     tvec = np.linspace(tstart, tend, int(tend/dt))
-    tvec2 = []
     n = 0
     while (guide.getVc()) > 0:
 
     #for t in tvec:
         guide.update()
             
-        pursuer.update(guide.getAtrueInI(), #proNav aceel in pursuer frame
-                       guide.getLosAngleRad(), # line of sight angle
-                       guide.getLookAngleRad()) 
+        pursuer.update(guide.getAtrueZemInI(), #proNav aceel in pursuer frame
+                    guide.getLosAngleRad(), # line of sight angle
+                    guide.getLookAngleRad()) 
 
         target.update()
         
@@ -92,7 +91,7 @@ if __name__ == "__main__":
             np.abs(pursuer.rInI[Z] - target.rInI[Z]) <= 0.1:
                 print("Rt/p getting small")
                 
-        tvec2.append(n*dt)
+         
         n+=1
     ep = EngagementPlotter()
     #ep.plotVehiclesSubplots(tvec[0:n], pursuer, target)
@@ -101,7 +100,7 @@ if __name__ == "__main__":
     print(f"Vc({n}): {guide.getVc()}")
     guide.setCollisionPoint(array(pursuer.rInI[X],pursuer.rInI[Z] ))
     print(f"collision at: ({pursuer.rInI[0]}, {pursuer.rInI[1]})")
-    engagementPlotter.plotCollision(target.rInIhist, pursuer.rInIhist)
+    engagementPlotter.plotCollision(target.rInIhist, pursuer.rInIhist, title = f"HE (deg)= {HEdeg0}, N = {N}")
     engagementPlotter.plotGuideVars(tvec[0:len(guide.lamdaDotHist)], guide)
     
     

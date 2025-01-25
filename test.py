@@ -33,89 +33,76 @@ class collisionTester:
         self.targetVelHist.append(self.target.VinI)
         self.losRateHist.append(self.guide.lamdaDot)
     
-    def run(self, plotTitle = ""):
-        n = 0
-        while self.guide.getVcInI() >= 0:           
-            guide.update(pursuer,target) 
-            self.pursuer.update(self.guide.getAtrueInI(), #proNav aceel in self.pursuer frame
-                        self.guide.getLosAngleRad(), # line of sight angle
-                        self.guide.getLookAngleRad()) 
+def simulate(N, HE, pursuer, target, guide, tstart, tend, dt, title, savefig = False):
+    tvec = np.linspace(tstart, tend, int(tend/dt))
+    n = 0
+    while (guide.getVc()) > 0:
 
-            self.target.update()
-            self.appendVars()
-            if np.abs(self.pursuer.RinI[X] - self.target.RinI[X]) <=  0.1 and\
-                np.abs(self.pursuer.RinI[Z] - self.target.RinI[Z]) <= 0.1:
-                    print("Rt/p getting small")
-                    
-            self.tvec.append(n*dt)
-            n+=1
-        self.guide.setCollisionPoint(array(self.pursuer.RinI[X],self.pursuer.RinI[Z] ))
-        print(f"collision at: ({self.pursuer.RinI[0]}, {self.pursuer.RinI[1]})")
-        self.plotter.plotCollision(tester.targetPosHist, tester.pursuerPosHist, plotTitle)
-        self.plotter.plotGuideVars(tester.tvec[0:len(tester.pursuerPosHist)], guide, plotTitle)
+    #for t in tvec:
+        guide.update()
+            
+        pursuer.update(guide.getAtrueInI(), #proNav aceel in pursuer frame
+                    guide.getLosAngleRad(), # line of sight angle
+                    guide.getLookAngleRad()) 
+
+        target.update()
+        
+        if np.abs(pursuer.rInI[X] - target.rInI[X]) <=  0.1 and\
+            np.abs(pursuer.rInI[Z] - target.rInI[Z]) <= 0.1:
+                print("Rt/p getting small")
+                
+        
+        n+=1
+    ep = EngagementPlotter()
+
+    print(f"Vc({n}): {guide.getVc()}")
+    guide.setCollisionPoint(array(pursuer.rInI[X],pursuer.rInI[Z] ))
+    print(f"collision at: ({pursuer.rInI[0]}, {pursuer.rInI[1]})")
+    ep.plotCollision(target.rInIhist, pursuer.rInIhist, title = title, savefig=savefig)
+    
+        
     
 if __name__ == "__main__":
-    dt  = 2/1000
-    betaDeg0 = 0
+    N = 5
+    dt = 2/1000
+
+     
+    ######### define target init orientation ########
+    betaDeg0 = 30
     betaRad0 = deg2rad(betaDeg0)
     VtMag = 2 #m/s
     at0mag = 1/2
-    T2Idcm = array([-cos(betaRad0),  #TODO: implement different, less ideal angles from pursuer
-                        sin(betaRad0)])
-    at0 = at0mag*T2Idcm
-    Vt0 = VtMag* T2Idcm
-    Rt0 = array([60, 16])
-   
-    ######## define pursuer init orientation ##########
-    Rp0 = array([20, 0]) 
-    VpMag = 5 #m/s
-    Rrel0 = Rt0 - Rp0
-    HEdeg0 = -20
-    
-    lamdaRad0 = arctan2(Rrel0[1],Rrel0[0])
-    arg1 = sin(betaRad0 + lamdaRad0) * VtMag/VpMag
-    L0 = arcsin(arg1) 
-    pursuerAngleFromHorizontalRad = L0 + lamdaRad0 
-    P2Idcm = array([-sin(lamdaRad0), cos(lamdaRad0)]) 
-    ap0mag = 1
-    ap0 = ap0mag*P2Idcm
-    Vp0 = VpMag* array([cos(pursuerAngleFromHorizontalRad + deg2rad(HEdeg0)), 
-                        sin(pursuerAngleFromHorizontalRad + deg2rad(HEdeg0))])
-    
-    #instantiate the objects
-    target = Target(at0, 
+    AtInT0 = at0mag*array([0,at0mag]) #in the BODY frame
+    VtInT0 = VtMag*array([1,0]) #in the BODY frame
+    RtInI0 = array([60, 16]) #in the INERTIAL frame
+    target = Target(AtInT0, 
                     betaDeg0, 
-                    [Rt0, Vt0],
+                    [RtInI0, VtInT0],
                     dt = dt)
-    pursuer = Pursuer(ap0, 
-                      rad2deg(pursuerAngleFromHorizontalRad), 
-                      [Rp0, Vp0],
+    
+    ######## define pursuer init orientation ##########
+    RpInI0 = array([20, 0]) 
+    VpInP0 = (1.1)*VtMag*array([1,0])
+    ApInP0 = at0mag*array([0, 1])
+    anglePursuerInertialDeg = 45
+    
+    HEdeg0 = -20
+    pursuer = Pursuer(ApInP0, 
+                      anglePursuerInertialDeg, 
+                      HEdeg0 , 
+                      [RpInI0, VpInP0],
                       dt = dt
                     )
-    guide = Guide(N=3, dt = dt)
-    tester = collisionTester(pursuer, target, guide,
-                             0,
-                             8,
-                             dt)
-    #tester.run()
+    #printVeloRatio(target, pursuer)
+    guide = Guide(pursuer, target, N=N, dt = dt, HEdeg = HEdeg0)
+    print(f"Vt/p: {target.vInI - pursuer.vInI}")
+    print(f"guide.Vc: {guide.getVc()}")
+    print(f"Guide.L (deg): {guide.getLookAngleDeg()}")
+    print(f"Guide.λ (deg): {guide.getLosAngleDeg()}")
+    tstart = 0
+    tend = 6
     
-    ########### test2: target accel > pursuer accel ###########
-    target = Target(5*ap0, 
-                    betaDeg0, 
-                    [Rt0, Vt0],
-                    dt = dt)
-    tester = collisionTester(pursuer, target, guide,
-                             0, #start time
-                             12, #end time
-                             dt)
-    #tester.run("target accel = 5x pursuer accel")
+    HEs = [-20]
     
-    target = Target(2*ap0, 
-                    betaDeg0, 
-                    [Rt0, Vt0],
-                    dt = dt)
-    tester = collisionTester(pursuer, target, guide,
-                             0, #start time
-                             8, #end time
-                             dt)
-    tester.run("target accel = 2x pursuer accel")
+    for HEdeg0 in HEs:
+        simulate(N, HEdeg0, pursuer, target, guide, tstart, tend, dt, title = f"HE (deg)= {HEdeg0}, N = {N}, ap = at, vp = 1.1vt", savefig=True)
