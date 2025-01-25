@@ -34,14 +34,15 @@ class Guide:
         self.RrelHist = []
         self.HErad = deg2rad(HEdeg)
         self.collisionLocationInI = np.inf
-        self.Rrel = 0
+        self.Rrel = targetObj.rInI - pursuerObj.rInI
         self.target = targetObj
         self.pursuer = pursuerObj
         
         self.update()
         # self.target.printStates("target")
         # self.pursuer.printStates("pursuer")
-        
+        Vrel = targetObj.vInI - pursuerObj.vInI
+        self.tgo = self.Rrel[Z]/ Vrel[Z]
     def updateDcms(self ):
          ### update the DCMs ##
         angleBtwPursuerLosRad = self.Lrad + self.HErad
@@ -77,18 +78,12 @@ class Guide:
             self.Lrad = asin(VT/VP*sin(betaLamda))  
         except ValueError as e:
             print(f"Error: {e}")
-            print(f"Guide.L (deg): {self.getLookAngleDeg()}")
-            print(f"Guide.λ (deg): {self.getLosAngleDeg()}")
-            print(f"target.β (deg): {self.target.getBetaDeg()}")
-            print(f"|Vt|: {norm(self.target.vInI)}")
-            print(f"|Vp|: {norm(self.pursuer.vInI)}")
-            print(f"sin(λ+β)*VT/VP: {VT/VP*sin(betaLamda)}")
+            self.printState()
         self.Vc = (-(self.Rrel[X] * Vrel[X]) - (self.Rrel[Z] * Vrel[Z]) )  / RrelNorm
-        
-        
+    
         self.aTrueMag =  self.N*self.lamdaDot * self.Vc
         self.aPureMag =  self.N*self.lamdaDot  * VP
-        self.appendVars()
+        self.storeStates()
         # self.target.printStates("target")
         # self.pursuer.printStates("pursuer")
     def update(self):
@@ -120,6 +115,8 @@ class Guide:
         return self.aPureMag *\
             array([-sin(angleBtwPursuerInertialRad),\
                    cos(angleBtwPursuerInertialRad)])
+    def getAtrueZemInI(self):
+        self.tgo
     def getLosAngleRad(self):
         return self.lamdaRad
     def getLosAngleDeg(self):
@@ -130,7 +127,7 @@ class Guide:
         return rad2deg(self.Lrad)
     def getVc(self):
         return self.Vc
-    def appendVars(self):
+    def storeStates(self):
         self.lamdaDotHist.append(rad2deg(self.lamdaDot))
         self.lamdaHist.append(rad2deg(self.lamdaRad))
         self.VcHist.append(self.Vc)
@@ -141,3 +138,11 @@ class Guide:
         self.collisionLocationInI = coord
     def getRtp(self):
         return self.Rrel
+    def printState(self):
+            
+            print(f"Guide.L (deg): {self.getLookAngleDeg()}")
+            print(f"Guide.λ (deg): {self.getLosAngleDeg()}")
+            print(f"target.β (deg): {self.target.getBetaDeg()}")
+            print(f"|Vt|: {norm(self.target.vInI)}")
+            print(f"|Vp|: {norm(self.pursuer.vInI)}")
+            print(f"sin(λ+β)*VT/VP: {VT/VP*sin(betaLamda)}")
