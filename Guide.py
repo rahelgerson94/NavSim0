@@ -63,11 +63,21 @@ class Guide:
         vRelInI = self.target.vInI - self.pursuer.vInI
         rRelInI = self.target.rInI - self.pursuer.rInI
         return rRelInI, vRelInI, aRelInI
-    def computeTgo(self):
+    
+    def updateTgo(self):
         rRelInI, vRelInI, aRelInI = self.computeRelativeStates()
         num = norm(rRelInI)
-         
-        denom = norm()
+        num = (rRelInI[X]**2 + rRelInI[Z]**2)**0.5
+        denom = norm((aRelInI * self.tgo/2) + (vRelInI))
+        denom = ( ((aRelInI[X]*self.tgo/2) + vRelInI[X])**2 +\
+                  ((aRelInI[Z]*self.tgo/2) + vRelInI[Z])**2\
+                )**0.5
+        
+        f = lambda tgo: (rRelInI[X]**2 + rRelInI[Z]**2)**0.5/\
+                    ( ((aRelInI[X]*tgo/2) + vRelInI[X])**2\
+                     +((aRelInI[Z]*tgo/2) + vRelInI[Z])**2\
+                    )**0.5
+        self.tgo = fsolve(f, self.tgo)
     def updateStates(self):
         
         #the states are output by pursuer, target in the intertial frames
@@ -128,7 +138,13 @@ class Guide:
             array([-sin(angleBtwPursuerInertialRad),\
                    cos(angleBtwPursuerInertialRad)])
     def getAtrueZemInI(self):
-        self.tgo
+        self.updateTgo()
+        rRelInI, vRelInI, aRelInI = self.computeRelativeStates()
+        apTrueZemMag = (self.N/self.tgo**2)*(rRelInI[Z] + vRelInI[Z]*self.tgo)
+        aTrueZemInP = matmul(self.pursuer2los.T, array([0, apTrueZemMag]))
+        angleLI = self.lamdaRad  #angle between los and inertial
+        return aTrueZemInP[Z]*array([-sin(angleLI),
+                                cos(angleLI)])
     def getLosAngleRad(self):
         return self.lamdaRad
     def getLosAngleDeg(self):
@@ -148,8 +164,7 @@ class Guide:
         self.RrelHist.append(self.Rrel)
     def setCollisionPoint(self, coord):
         self.collisionLocationInI = coord
-    def getRtp(self):
-        return self.Rrel
+
     def printState(self):
             
             print(f"Guide.L (deg): {self.getLookAngleDeg()}")

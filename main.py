@@ -55,7 +55,7 @@ if __name__ == "__main__":
     ApInP0 = array([0, 4])
     anglePursuerInertialDeg = 45
     
-    HEdeg0 = 0
+    HEdeg0 = -50
     Rrel0 = RtInI0 - RpInI0 
     pursuer = Pursuer(ApInP0, 
                       anglePursuerInertialDeg, 
@@ -64,7 +64,7 @@ if __name__ == "__main__":
                       dt = dt
                     )
     #printVeloRatio(target, pursuer)
-    guide = Guide(pursuer, target, N=4, dt = dt, HEdeg = HEdeg0)
+    guide = Guide(pursuer, target, N=5, dt = dt, HEdeg = HEdeg0)
     print(f"Vt/p: {target.vInI - pursuer.vInI}")
     print(f"guide.Vc: {guide.getVc()}")
     lamda = computeAngleBtwVecsDeg((target.rInI - pursuer.rInI), [1, 0]) 
