@@ -43,7 +43,7 @@ if __name__ == "__main__":
     AtInT0 = at0mag*array([0,0,0]) #in the BODY frame
     VtInT0 = VtMag*array([1,0,0]) #in the BODY frame
     RtInI0 = array([60, 0, 16]) #in the INERTIAL frame
-    tRotSeqDeg = [0,0,0]
+    tRotSeqDeg = [0,180+30,0]
     target = Target(AtInT0, 
                     tRotSeqDeg, 
                     [RtInI0, VtInT0],
@@ -63,10 +63,13 @@ if __name__ == "__main__":
     pRotSeqDeg[0] is the rotation about the z (3rd) axis
     pRotSeqDeg[i] is the rotation about the (3-i)th axis
     '''
-    pRotSeqDeg = [0,0,0]
+    
     HEdeg0 = 0
     
-    Rrel0 = RtInI0 - RpInI0 
+    rRel0 = RtInI0 - RpInI0 
+    
+    loasAngleRad0 = arctan2(rRel0[Z], rRel0[X])
+    pRotSeqDeg = [0,0,0]
     pursuer = Pursuer(ApInP0, 
                       pRotSeqDeg, 
                       HEdeg0 , 
@@ -74,21 +77,23 @@ if __name__ == "__main__":
                       dt = dt
                     )
     pursuer.printStates()
+    vRelInI0 = target.vInI - pursuer.vInI
+    print(f"vt/p(0) = {vRelInI0}")
     guide = Guide(pursuer, target, N=4, dt = dt, HEdeg = HEdeg0)
     guide.printState()
 
 
     tstart = 0
-    tend = 6
-
+    tend = .1
     tvec = []
     
     n = 0
-    while norm(guide.getZemInI()) > .1:
+    NMAX = int( (tend - tstart)/dt)
+    while norm(guide.getZemInI()) > .1 and n < NMAX:
         guide.update(pursuer, target)
         guide.storeStates()
         
-        pursuer.update([0,0,0], guide.getAcmdInI())  
+        pursuer.update([0, 0, 0], guide.getAcmdInI())  
         pursuer.storeStates()
         
         target.update(tRotSeqDeg, aTinT)
@@ -115,6 +120,6 @@ if __name__ == "__main__":
     
     engagementPlotter.plotCollision3d( target, pursuer)
     
-    #engagementPlotter.plotStateProjections(tvec, target, pursuer,  state='a')
+    engagementPlotter.plotStateProjections(tvec, target, pursuer,  state='r')
     
     
