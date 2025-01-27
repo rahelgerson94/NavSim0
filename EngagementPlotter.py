@@ -132,7 +132,7 @@ class EngagementPlotter:
             for j in range(len(axesNames)):  # Columns
                 axez[i, j].plot(tvec, pdata[:, j])  # Example plot
                 axez[i, j].set_title(f" {playerNames[i]} {stateName} {axesNames[j]}")  # Title for each subplot
-                axez[i,j].set_ylim(-100, 25)
+                axez[i,j].set_ylim(-100, 100)
                 axez[i, j].grid(True)  # Add grid
         plt.tight_layout()
         plt.show()
