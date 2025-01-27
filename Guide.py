@@ -8,7 +8,8 @@ from Vehicle import Pursuer
 from Vehicle import Target
 from math import asin
 X = 0
-Z = 1
+Y = 1
+Z = 2
 R = 0
 V = 1
 class Guide:
@@ -16,133 +17,105 @@ class Guide:
                  targetObj, 
                  HEdeg = -20, 
                  N=3, 
-                 dt = 1/100, 
-                 mode = 'pure'):
-        self.Lrad = 0 #look angle
-        self.lamdaRad = 0 # line of sight angle 
-        self.lamdaDot = 0
-        self.Vc = 100000
+                 dt = 1/100,
+                 aMax  = [100, 0,  100],
+                 aMin = [-100, 0, -100]):
+        self.aCmdInI = 0
         self.dt = dt 
         self.N = N
-        self.aTrueInLos = 0
-        self.aPureMag = 0
-        self.aTrueMag = 0
-        self.lamdaDotHist = []
-        self.lamdaHist = []
-        self.VcHist = []
-        self.lookAngleHist = []
-        self.RrelHist = []
+        self.zemInI = array([1, 1, 1])
+
         self.HErad = deg2rad(HEdeg)
         self.collisionLocationInI = np.inf
-        self.Rrel = targetObj.rInI - pursuerObj.rInI
         self.target = targetObj
         self.pursuer = pursuerObj
+        self.zemHist = []
+        self.aCmdInIHist = []
+        self.VcHist = []
+        self.rRelInIhist = []
+        self.aMax = array(aMax)
+        self.aMin = array(aMin)
+        ''' for this specific sim, the los angle is rotation about the y axis
+        and represents the angle between the relative pos vector and the horizontal'''
+        self.losAngleRad = 0
         
-        self.update()
-        # self.target.printStates("target")
-        # self.pursuer.printStates("pursuer")
-        Vrel = targetObj.vInI - pursuerObj.vInI
-        self.tgo = self.Rrel[Z]/ Vrel[Z]
-    def updateDcms(self ):
-         ### update the DCMs ##
-        angleBtwPursuerLosRad = self.Lrad + self.HErad
-        self.pursuer2los = np.array([[cos(angleBtwPursuerLosRad), -sin(angleBtwPursuerLosRad)],
-                                  [ sin(angleBtwPursuerLosRad),     cos(angleBtwPursuerLosRad)]])
-        #print(f"los2pDcm.shape: {self.los2pursuerDcm.shape}")
-        self.los2inertialDcm = np.array([[cos(self.lamdaRad), sin(self.lamdaRad)],
-                                  [      sin(self.lamdaRad), cos(self.lamdaRad)]])
-        #print(f"los2inertialDcm.shape: {self.los2inertialDcm.shape}")
-        angleBtwPursuerInertialRad = self.Lrad + self.lamdaRad
-        self.pursuer2inertialDcm = np.array([[cos(angleBtwPursuerInertialRad), -sin(angleBtwPursuerInertialRad)],
-                                  [          sin(angleBtwPursuerInertialRad), cos(angleBtwPursuerInertialRad)]])
-        #print(f"pursuer2inertialDcm.shape: {self.pursuer2inertialDcm.shape}")
+    
     def updateStates(self):
         
+        rRelInI, vRelInI, _ = self.getRelativeStates()
+        RTP = norm(rRelInI)
+        self.tgo = RTP/norm(vRelInI)
         #the states are output by pursuer, target in the intertial frames
-        Vt = self.target.vInI
-        Vp = self.pursuer.vInI
-        Rt = self.target.rInI
-        Rp = self.pursuer.rInI 
+        self.zemInI  = rRelInI - vRelInI*self.tgo
+        
+        zemPerp = self.computeZemPlos(rRelInI)
+        self.aCmdInI  = array((self.N/ (self.tgo)**2) * (zemPerp))
+        print(f"[guide]: self.aCmdInI: {self.aCmdInI}")
+        
+        
+        self.losAngleRad = arctan2(rRelInI[Z], rRelInI[X]) #TODO: compute angles about the other axes
 
-        self.Rrel = Rt - Rp
-        
-        Vrel = Vt - Vp  
-        RrelNorm = norm(self.Rrel)
-        
-        self.lamdaRad = np.arctan2(self.Rrel[Z],self.Rrel[X])
-        self.lamdaDot = (self.Rrel[X]*Vrel[Z] - self.Rrel[Z]*Vrel[X]) / RrelNorm**2
-        betaLamda = (self.target.betaRad + self.lamdaRad)
-        VT = norm(Vt)
-        VP = norm(Vp)
-        try:
-            self.Lrad = asin(VT/VP*sin(betaLamda))  
-        except ValueError as e:
-            print(f"Error: {e}")
-            self.printState()
-        self.Vc = (-(self.Rrel[X] * Vrel[X]) - (self.Rrel[Z] * Vrel[Z]) )  / RrelNorm
-    
-        self.aTrueMag =  self.N*self.lamdaDot * self.Vc
-        self.aPureMag =  self.N*self.lamdaDot  * VP
-        self.storeStates()
-        # self.target.printStates("target")
-        # self.pursuer.printStates("pursuer")
-    def update(self):
+    def computeZemPlos(self,rRelInI):
+        '''
+        compute the component of zem (m) thats perp. to line of sight. 
+        this is equal to the zem vector in the inertial frame (self.zemInI),
+        minus the  (unit length) component of self.zemInI along/parallel to the los.
+        '''
+        #zemPar the component of the zem vector parallel to the los
+        #zemPar  = np.dot(self.zemInI, rRelInI)   / (norm(rRelInI)*norm(self.zemInI)) *rRelInI  
+        zemDotRtp =  np.dot(self.zemInI, rRelInI)/ norm(rRelInI)
+        zemPar = zemDotRtp* rRelInI/norm(rRelInI)
+        zemPerp = self.zemInI - zemPar
+        return zemPerp
+    def getRelativeStates(self):
+        rRelInI = self.target.rInI - self.pursuer.rInI
+        vRelInI = self.target.vInI - self.pursuer.vInI
+        aRelInI = self.target.aInI - self.pursuer.aInI
+        return rRelInI, vRelInI, aRelInI
+    def update(self, pursuer, target):
         db.enter()
+        self.target = target
+        self.pursuer = pursuer
         self.updateStates( )
-        self.updateDcms()
-    
+        #self.updateDcms()
+
     '''
-    compute ProNav accel in the los frame
+    getAcmd: return the commanded accel for this 
+    timestep
     '''
-    def getAtrueInLos(self):
-        return array([0, self.aTrueMag])
-    '''
-    provide the ProNav accel in the pursuer frame 
-    '''
-    def getAtrueInI(self):
-        #return matmul(self.los2pursuerDcm, self.aTrueInLos)
-        
-        aTrueInP = matmul(self.pursuer2los.T, array([0, self.aTrueMag]))
-        angleLI = self.lamdaRad  #angle between los and inertial
-        return aTrueInP[Z]*array([-sin(angleLI),
-                                cos(angleLI)])
-    def getApureMag(self):
-        #return matmul(self.los2pursuerDcm, self.aPureInLos)
-        return self.aPureMag
-    def getApureInI(self):
-        angleBtwPursuerInertialRad = self.Lrad + self.lamdaRad + self.HErad
-        
-        return self.aPureMag *\
-            array([-sin(angleBtwPursuerInertialRad),\
-                   cos(angleBtwPursuerInertialRad)])
-    def getAtrueZemInI(self):
-        self.tgo
-    def getLosAngleRad(self):
-        return self.lamdaRad
-    def getLosAngleDeg(self):
-        return rad2deg(self.lamdaRad)
-    def getLookAngleRad(self):
-        return self.Lrad
-    def getLookAngleDeg(self):
-        return rad2deg(self.Lrad)
-    def getVc(self):
-        return self.Vc
+    def getAcmdInI(self):
+        self.clipAccel()
+        return self.aCmdInI
+    def clipAccel(self):
+       
+        if self.aCmdInI[X] > self.aMax[X]:
+             self.aCmdInI[X] = self.aMax[X]
+        if self.aCmdInI[Y] > self.aMax[Y]:
+             self.aCmdInI[Y] = self.aMax[Y]
+        if self.aCmdInI[Z] > self.aMax[Z]:
+             self.aCmdInI[Z] = self.aMax[Z]
+             
+             
+        if self.aCmdInI[X] < self.aMin[X]:
+             self.aCmdInI[X] = self.aMin[X]
+        if self.aCmdInI[Y] < self.aMin[Y]:
+             self.aCmdInI[Y] = self.aMin[Y]
+        if self.aCmdInI[Z] < self.aMin[Z]:
+             self.aCmdInI[Z] = self.aMin[Z]        
     def storeStates(self):
-        self.lamdaDotHist.append(rad2deg(self.lamdaDot))
-        self.lamdaHist.append(rad2deg(self.lamdaRad))
-        self.VcHist.append(self.Vc)
-        self.lookAngleHist.append(rad2deg(self.Lrad))
+        self.zemHist.append(self.zemInI)
+        self.aCmdInIHist.append(self.aCmdInI)
+        self.rRelInIhist.append(self.target.rInI - self.pursuer.rInI)
+    
+    def getZemInI(self):
+        return self.zemInI
         
-        self.RrelHist.append(self.Rrel)
     def setCollisionPoint(self, coord):
         self.collisionLocationInI = coord
-    def getRtp(self):
-        return self.Rrel
-    def printState(self):
-            
-            print(f"Guide.L (deg): {self.getLookAngleDeg()}")
-            print(f"Guide.λ (deg): {self.getLosAngleDeg()}")
-            print(f"target.β (deg): {self.target.getBetaDeg()}")
-            print(f"|Vt|: {norm(self.target.vInI)}")
-            print(f"|Vp|: {norm(self.pursuer.vInI)}")
-            print(f"sin(λ+β)*VT/VP: {VT/VP*sin(betaLamda)}")
+    def getLosAngleRad(self):
+        return self.losAngleRad
+    def printState(self):  
+        
+        print(f"zemInI: [", end='')
+        print("  ".join(f"{elem:.2f}" for elem in self.zemInI), end='')
+        print("]")
