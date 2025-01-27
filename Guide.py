@@ -8,7 +8,8 @@ from Vehicle import Pursuer
 from Vehicle import Target
 from math import asin
 X = 0
-Z = 1
+Y = 1
+Z = 2
 R = 0
 V = 1
 class Guide:
@@ -16,7 +17,9 @@ class Guide:
                  targetObj, 
                  HEdeg = -20, 
                  N=3, 
-                 dt = 1/100):
+                 dt = 1/100,
+                 aMax  = [100, 0,  100],
+                 aMin = [-100, 0, -100]):
         self.aCmdInI = 0
         self.dt = dt 
         self.N = N
@@ -29,9 +32,13 @@ class Guide:
         self.zemHist = []
         self.aCmdInIHist = []
         self.VcHist = []
-        self.RrelHist = []
+        self.rRelInIhist = []
+        self.aMax = array(aMax)
+        self.aMin = array(aMin)
+        ''' for this specific sim, the los angle is rotation about the y axis
+        and represents the angle between the relative pos vector and the horizontal'''
+        self.losAngleRad = 0
         
- 
     
     def updateStates(self):
         
@@ -45,6 +52,8 @@ class Guide:
         self.aCmdInI  = array((self.N/ (self.tgo)**2) * (zemPerp))
         print(f"[guide]: self.aCmdInI: {self.aCmdInI}")
         
+        
+        self.losAngleRad = arctan2(rRelInI[Z], rRelInI[X]) #TODO: compute angles about the other axes
 
     def computeZemPlos(self,rRelInI):
         '''
@@ -53,7 +62,9 @@ class Guide:
         minus the  (unit length) component of self.zemInI along/parallel to the los.
         '''
         #zemPar the component of the zem vector parallel to the los
-        zemPar  = (np.dot(self.zemInI, rRelInI)/ norm(rRelInI)) *rRelInI  
+        #zemPar  = np.dot(self.zemInI, rRelInI)   / (norm(rRelInI)*norm(self.zemInI)) *rRelInI  
+        zemDotRtp =  np.dot(self.zemInI, rRelInI)/ norm(rRelInI)
+        zemPar = zemDotRtp* rRelInI/norm(rRelInI)
         zemPerp = self.zemInI - zemPar
         return zemPerp
     def getRelativeStates(self):
@@ -73,18 +84,38 @@ class Guide:
     timestep
     '''
     def getAcmdInI(self):
+        self.clipAccel()
         return self.aCmdInI
+    def clipAccel(self):
+       
+        if self.aCmdInI[X] > self.aMax[X]:
+             self.aCmdInI[X] = self.aMax[X]
+        if self.aCmdInI[Y] > self.aMax[Y]:
+             self.aCmdInI[Y] = self.aMax[Y]
+        if self.aCmdInI[Z] > self.aMax[Z]:
+             self.aCmdInI[Z] = self.aMax[Z]
+             
+             
+        if self.aCmdInI[X] < self.aMin[X]:
+             self.aCmdInI[X] = self.aMin[X]
+        if self.aCmdInI[Y] < self.aMin[Y]:
+             self.aCmdInI[Y] = self.aMin[Y]
+        if self.aCmdInI[Z] < self.aMin[Z]:
+             self.aCmdInI[Z] = self.aMin[Z]        
     def storeStates(self):
         self.zemHist.append(self.zemInI)
         self.aCmdInIHist.append(self.aCmdInI)
+        self.rRelInIhist.append(self.target.rInI - self.pursuer.rInI)
     
     def getZemInI(self):
         return self.zemInI
         
     def setCollisionPoint(self, coord):
         self.collisionLocationInI = coord
-
+    def getLosAngleRad(self):
+        return self.losAngleRad
     def printState(self):  
+        
         print(f"zemInI: [", end='')
         print("  ".join(f"{elem:.2f}" for elem in self.zemInI), end='')
         print("]")
