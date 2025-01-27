@@ -13,7 +13,7 @@ class EngagementPlotter:
     def __init__(self):
         self.collisionPoint = array([np.inf,np.inf])
         
-    def plotCollision3d(self, target, pursuer, title=""):
+    def plotCollision3d(self, target, pursuer, title="", tvec=None):
         """
         Plots the trajectories of the target and pursuer and stops at the collision point.
 
@@ -157,7 +157,7 @@ class EngagementPlotter:
         if overlayed == True, this will plot 3 plots, each with 
         target, pursuer states overlayed on top of one other'''
         if overlayed:
-            fig, axez = plt.subplots(1, 3, figsize=(10, 12))  # Adjust figsize as needed
+            fig, axez = plt.subplots(1, 3, figsize=(7,3))  # Adjust figsize as needed
         
             
             
@@ -167,7 +167,7 @@ class EngagementPlotter:
                 axez[j].plot(tvec, pdata[:, j], color = 'blue', label = 'pursuer')  
                 axez[j].plot(tvec, tdata[:, j], color = 'red', label = 'target')    
                 axez[ j].set_title(f"{stateName} {axesNames[j]}")  # Title for each subplot
-                axez[j].set_ylim(-100, 100)
+                
                 axez[j].grid(True)  # Add grid
             plt.legend()
             plt.tight_layout()

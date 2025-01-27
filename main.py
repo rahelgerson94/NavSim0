@@ -43,7 +43,7 @@ if __name__ == "__main__":
     AtInT0 = at0mag*array([0,0,0]) #in the BODY frame
     VtInT0 = VtMag*array([1,0,0]) #in the BODY frame
     RtInI0 = array([60, 0, 16]) #in the INERTIAL frame
-    tRotSeqDeg = [0,180+30,0]
+    tRotSeqDeg = [0,180+40,0]
     target = Target(AtInT0, 
                     tRotSeqDeg, 
                     [RtInI0, VtInT0],
