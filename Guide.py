@@ -24,7 +24,7 @@ class Guide:
         self.dt = dt 
         self.N = N
         self.zemInI = array([1, 1, 1])
-
+        self.tgo = 100
         self.HErad = deg2rad(HEdeg)
         self.collisionLocationInI = np.inf
         self.target = targetObj
@@ -46,7 +46,7 @@ class Guide:
         RTP = norm(rRelInI)
         self.tgo = RTP/norm(vRelInI)
         #the states are output by pursuer, target in the intertial frames
-        self.zemInI  = rRelInI - vRelInI*self.tgo
+        self.zemInI  = rRelInI + vRelInI*self.tgo
         
         zemPerp = self.computeZemPlos(rRelInI)
         self.aCmdInI  = array((self.N/ (self.tgo)**2) * (zemPerp))
@@ -64,7 +64,7 @@ class Guide:
         #zemPar the component of the zem vector parallel to the los
         #zemPar  = np.dot(self.zemInI, rRelInI)   / (norm(rRelInI)*norm(self.zemInI)) *rRelInI  
         zemDotRtp =  np.dot(self.zemInI, rRelInI)/ norm(rRelInI)
-        zemPar = zemDotRtp* rRelInI/norm(rRelInI)
+        zemPar = zemDotRtp/norm(rRelInI) *rRelInI
         zemPerp = self.zemInI - zemPar
         return zemPerp
     def getRelativeStates(self):

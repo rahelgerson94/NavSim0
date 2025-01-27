@@ -26,20 +26,49 @@ class EngagementPlotter:
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
+        if tvec is not None:
+            sc1 = ax.scatter(target_x, target_y, target_z, c=tvec, cmap='viridis', label='target',s = 2)
+            sc2 = ax.scatter(pursuer_x, pursuer_y, pursuer_z, c=tvec, cmap='plasma', label='pursuer',s = 2)
         
-        # Plot the truncated trajectories
-        # Plot the (x, y, z) points
-        ax.plot(target_x, target_y, target_z, label='target')
-        sc1 = ax.scatter(target_x, target_y, target_z)  # Optional: color by time
-        ax.plot(pursuer_x, pursuer_y, pursuer_z, label='pursuer')
-        sc2 =ax.scatter(pursuer_x, pursuer_y, pursuer_z)  # Optional: color by time
-
+            # Add a color bar for each trajectory to show time info
+            cbar1 = fig.colorbar(sc1, ax=ax, pad=0.1, shrink=0.5, location='left')
+            cbar1.set_label('time (target)')
+            cbar2 = fig.colorbar(sc2, ax=ax, pad=0.1, shrink=0.5)
+            cbar2.set_label('time (pursuer)')
+        else:
+            
+            ax.scatter(target_x, target_y, target_z, color='red', label='target',s = 2)
+             
+            ax.plot(pursuer_x, pursuer_y, pursuer_z, color='blue', label='pursuer')
+            ax.scatter(pursuer_x, pursuer_y, pursuer_z, color='blue', label='pursuer',s = 2)
         
         # Labels and title
         ax.set_xlabel('X')
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
         ax.set_title('3D Trajectory')
+        
+        # set axis limits
+        xmax = np.max([np.max(pursuer_x),np.max(target_x)])
+        ymax = np.max([np.max(pursuer_y),np.max(target_y)])  
+        zmax = np.max([np.max(pursuer_z),np.max(target_z)])  
+        
+        xmax += 0.1*xmax
+        ymax += 0.1*ymax
+        zmax += 0.1*zmax
+        
+        xmin = np.min([np.min(pursuer_x),np.min(target_x)])  
+        ymin = np.min([np.min(pursuer_y),np.min(target_y)])  
+        zmin = np.min([np.min(pursuer_z),np.min(target_z)])  
+        
+        xmin -= 0.1*xmin
+        ymin -= 0.1*ymin
+        zmin -= 0.1*zmin 
+        
+        ax.set_xlim([xmin, xmax])  # X-axis range
+        ax.set_ylim([ymin, ymax])  # Y-axis range
+        ax.set_zlim([zmin, zmax])  # Z-axis range (beyond the trajectory for a larger grid)
+
 
         # Add legend
         ax.legend()
@@ -102,7 +131,7 @@ class EngagementPlotter:
         # Adjust layout
         plt.tight_layout()
         plt.show()
-    def plotStateProjections(self, tvec, target, pursuer, state='r'):
+    def plotStateProjections(self, tvec, target, pursuer, state='r', overlayed=False):
         '''
         @name:  plotprojections
         @brief: plots pursuer (state) in x,y,z 
@@ -122,21 +151,47 @@ class EngagementPlotter:
             tdata = target.aInIhist
         pdata = array(pdata)
         tdata = array(tdata)
-        # px, py, pz = pdata[:, 0], pdata[:, 1], pdata[:, 2]
-        # tx, ty, tz = tdata[:, 0], tdata[:, 1], tdata[:, 2]
-        fig, axez = plt.subplots(2, 3, figsize=(10, 12))  # Adjust figsize as needed
+
+
+        '''
+        if overlayed == True, this will plot 3 plots, each with 
+        target, pursuer states overlayed on top of one other'''
+        if overlayed:
+            fig, axez = plt.subplots(1, 3, figsize=(10, 12))  # Adjust figsize as needed
         
-        playerNames = ["pursuer", "target"]
-        axesNames = ["x", "y", "z"]
-        for i in range(len(playerNames)):  # Rows
+            
+            
+            axesNames = ["x", "y", "z"]
+            
             for j in range(len(axesNames)):  # Columns
-                axez[i, j].plot(tvec, pdata[:, j])  # Example plot
-                axez[i, j].set_title(f" {playerNames[i]} {stateName} {axesNames[j]}")  # Title for each subplot
-                axez[i,j].set_ylim(-100, 100)
-                axez[i, j].grid(True)  # Add grid
-        plt.tight_layout()
-        plt.show()
+                axez[j].plot(tvec, pdata[:, j], color = 'blue', label = 'pursuer')  
+                axez[j].plot(tvec, tdata[:, j], color = 'red', label = 'target')    
+                axez[ j].set_title(f"{stateName} {axesNames[j]}")  # Title for each subplot
+                axez[j].set_ylim(-100, 100)
+                axez[j].grid(True)  # Add grid
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
         
+        else:
+            '''
+            if overlayed == False, this will plot a grid of  
+            (2 rows, 3 cols) 
+            target pos,  target vel,  target accel
+            pursuer pos, pursuer vel, pursuer accel'''
+            fig, axez = plt.subplots(2, 3, figsize=(10, 12))  # Adjust figsize as needed          
+            playerNames = ["pursuer", "target"]
+            playerData = [pdata, tdata]
+            axesNames = ["x", "y", "z"]
+            for i in range(len(playerNames)):  # Rows
+                for j in range(len(axesNames)):  # Columns
+                    axez[i, j].plot(tvec, playerData[i][:, j])   
+                    axez[i, j].set_title(f" {playerNames[i]} {stateName} {axesNames[j]}")  # Title for each subplot
+                    axez[i,j].set_ylim(-100, 100)
+                    axez[i, j].grid(True)  # Add grid
+            plt.tight_layout()
+            plt.show()
+            
         
             
 

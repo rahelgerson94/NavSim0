@@ -84,19 +84,19 @@ if __name__ == "__main__":
 
 
     tstart = 0
-    tend = .1
+    tend = 10 
     tvec = []
     
     n = 0
     NMAX = int( (tend - tstart)/dt)
-    while norm(guide.getZemInI()) > .1 and n < NMAX:
+    while guide.tgo > 0.01:
         guide.update(pursuer, target)
         guide.storeStates()
         
         pursuer.update([0, 0, 0], guide.getAcmdInI())  
         pursuer.storeStates()
         
-        target.update(tRotSeqDeg, aTinT)
+        target.update([0,0,0], aTinT)
         target.storeStates()
         
         if np.abs(pursuer.rInI[X] - target.rInI[X]) <=  0.1 and\
@@ -118,8 +118,8 @@ if __name__ == "__main__":
     tvec = tvec[0:n]
     print(f"collision at: ({pursuer.rInI[0]}, {pursuer.rInI[1]})")
     
-    engagementPlotter.plotCollision3d( target, pursuer)
+    engagementPlotter.plotCollision3d( target, pursuer, tvec = tvec)
     
-    engagementPlotter.plotStateProjections(tvec, target, pursuer,  state='r')
+    engagementPlotter.plotStateProjections(tvec, target, pursuer,  state='r', overlayed=True)
     
     
