@@ -9,81 +9,48 @@ import debug as db
 class Target(RigidBody):
     def __init__(self, 
                  accel0InT,
-                 targetAngleFromHorizontalDeg, 
+                 rotationSequenceDeg, 
                  initState, 
-                 dt= 1/100,
-                 f = 1,
-                 aInIfunc = None):
-        super().__init__(dt)
-        self.aInB = accel0InT
-        self.betaRad =  deg2rad(targetAngleFromHorizontalDeg)
-        self.IB = np.array([[-cos(self.betaRad), sin(self.betaRad)],
-                             [sin(self.betaRad),  cos(self.betaRad)]])
-        self.rInI = array(initState[0]) # target pos in the inertial frame 
+                 dt= 1/100):
+        
+        '''
+        super().__init__ stores the sampling period and computes 
+        the body2inertial dcm from rotationSequence
+        '''
+        super().__init__(initState[0],
+                         initState[1],
+                         accel0InT,
+                         rotationSequence=rotationSequenceDeg,
+                         dt=dt )
+        
         self.t = 0
-        self.aInIfunc = aInIfunc
-        if self.aInIfunc is None:
-            self.toInertial(accel0InT, initState[1])
-        else:
-            
-            self.aInI = self.aInIfunc(0)
-            self.vInI = matmul(self.IB.T, initState[1])
-            #self.updateStatesFromFunction()
-        self.dt = dt
-        self.f = f
-        self.aInIHist = []
-        self.vInIHist = []
-        self.rInIHist = []
-        self.betaDot = 0
-    def update(self):
+        
+        
+    def update(self, rotationSeqeunce, aInB):
         self.t += self.dt
-        betaDot = norm(self.aInI) / norm(self.vInI)
-        self.betaRad = self.betaRad + betaDot*self.dt
+        super().update(rotationSeqeunce, aInB)
         
-        self.IB = np.array([[-cos(self.betaRad), sin(self.betaRad)],
-                            [sin(self.betaRad),   cos(self.betaRad)]])
-        #update target state vars. note for const velcoty, this is
-        #unecessary
-        if self.aInIfunc is None:
-            self.aInI = matmul(self.IB, self.aInB)
-            self.vInI = self.vInI + self.aInI*self.dt
-            self.rInI = self.rInI + self.vInI*self.dt
-        else:
-            self.updateStatesFromFunction()
-        self.storeStates()
-    def updateStatesFromFunction(self):
-        self.aInI = self.aInIfunc(self.t)
-         
-        # v = lambda t: array([(w)*cos(w * t), 0])/40
-        # self.vInI = v(self.t)
-        # r = lambda t: array([-sin(w * t), 0])/40
-        # self.rInI = r(self.t)
-        self.vInI = self.vInI + self.aInI*self.dt
-        self.rInI = self.rInI + self.vInI*self.dt
-        self.storeStates()
         
-    def getBetaDeg(self):
-        return rad2deg(self.betaRad)
-    def printStates(self, rbodyName=""):
+
+        
+    def printStates(self, rbodyName="target"):
         print(f"------{rbodyName} states--------")
-        print(f"β (deg): {self.getBetaDeg()}")
+       
         super().printStates()
         
 class Pursuer(RigidBody):
     def __init__(self, 
                  accel0InP,
-                 pursuerAngleFromHorizontalDeg, 
+                 rotationSequenceDeg, 
                  HEdeg,
                  initState, 
                  dt = 1/100):
-        super().__init__(dt)
-        self.angleFromHorizontalRad = deg2rad(pursuerAngleFromHorizontalDeg) + deg2rad(HEdeg)
-        print(f"In c-tor: self.angleFromHorizontal: {rad2deg(self.angleFromHorizontalRad)}")
-        self.IB = np.array([[cos(self.angleFromHorizontalRad), -sin(self.angleFromHorizontalRad)],
-                            [sin(self.angleFromHorizontalRad), cos(self.angleFromHorizontalRad)]])
-        self.rInI = array(initState[0]) # pursuer pos in the inertial frame 
-        self.toInertial(accel0InP, initState[1])
-        self.dt = dt
+        rotationSequenceDeg = rotationSequenceDeg +  array([HEdeg, 0, 0])  
+        super().__init__(initState[0],
+                         initState[1],
+                         accel0InP,
+                         rotationSequence=rotationSequenceDeg,
+                         dt=dt )
         self.HErad = deg2rad(HEdeg)
     def integrateRk4(self, accelCmd ):
         pass
@@ -91,21 +58,17 @@ class Pursuer(RigidBody):
         requires, lmabda,S L, accel from guidance
         -accel: [ap_x, ap_z]
     '''
-    def update(self, accelCmdInI, lamda, Lrad):
-        db.enter()
+    def update(self, rotationSeq, accelCmdInI):
+        #db.enter()
+                 
         self.aInI = accelCmdInI
-        self.angleFromHorizontalRad = ( Lrad + lamda + self.HErad)
-        #print(f"In update: self.angleFromHorizontal: {rad2deg(self.angleFromHorizontalRad)}")
+        self.vInI = self.vInI + self.aInI*self.dt
+        self.rInI = self.rInI + self.vInI*self.dt
         
-        ## guidance will pass the accel command in the pursuer frame!!
-
-        self.vInI = self.vInI + (self.aInI * self.dt)
-        self.rInI = self.rInI + (self.vInI * self.dt)
-        self.storeStates()
+        
         ####check that these are equalivant
-    def printStates(self, rbodyName=""):
+    def printStates(self, rbodyName="pursuer"):
         print(f"------{rbodyName} states--------")
-        print(f"θp (deg): {rad2deg(self.angleFromHorizontalRad)}")
         super().printStates()
     
 if __name__ ==  "__main__":
@@ -124,8 +87,7 @@ if __name__ ==  "__main__":
     target = Target(AtInT0, 
                     betaDeg0, 
                     [RtInI0, VtInT0],
-                    dt = dt,
-                    aInIfunc= accelFunc)
+                    dt = dt)
     tvec = np.linspace(0, 8, int(8/dt))
     for t in tvec:
         target.update()

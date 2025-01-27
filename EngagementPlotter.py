@@ -2,16 +2,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy import array, allclose, deg2rad, cos, sin, arctan2
 from numpy.linalg import norm
+from mpl_toolkits.mplot3d import Axes3D
 
 X = 0
-Z = 1
+Y = 1
+Z = 2
 R = 0
 V = 1
 class EngagementPlotter:
     def __init__(self):
         self.collisionPoint = array([np.inf,np.inf])
         
-    def plotCollision(self, target_coords, pursuer_coords, title=""):
+    def plotCollision3d(self, target, pursuer, title=""):
         """
         Plots the trajectories of the target and pursuer and stops at the collision point.
 
@@ -19,35 +21,30 @@ class EngagementPlotter:
         - target_coords: List of tuples representing the target's (x, y) coordinates over time.
         - pursuer_coords: List of tuples representing the pursuer's (x, y) coordinates over time.
         """
-        # Truncate at collision point
-        truncated_target = []
-        truncated_pursuer = []
+        target_x, target_y, target_z = zip(*target.rInIhist)
+        pursuer_x, pursuer_y, pursuer_z = zip(*pursuer.rInIhist)
 
-        for t, p in zip(target_coords, pursuer_coords):
-            truncated_target.append(t)
-            truncated_pursuer.append(p)
-            if np.abs(p[X] -  t[X]) <=  0.15 and\
-                np.abs(t[Z] - t[Z]) <= 0.15:
-                self.collisionPoint = array([t[0], t[1]])
-                print(f"collision at: ({self.collisionPoint[0]}, {self.collisionPoint[1]})")
-                break       
-        # Unpack truncated coordinates
-        target_x, target_y = zip(*truncated_target)
-        pursuer_x, pursuer_y = zip(*truncated_pursuer)
-
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        
         # Plot the truncated trajectories
-        plt.figure()
-        plt.plot(target_x, target_y, 'r-o', label='Target', linewidth=2, markersize=2)
-        plt.plot(pursuer_x, pursuer_y, 'g-o', label='Pursuer', linewidth=2, markersize=2)
-        plt.scatter(target_x[-1], target_y[-1], c='b', s=100, label='Collision Point', zorder=5)
+        # Plot the (x, y, z) points
+        ax.plot(target_x, target_y, target_z, label='target')
+        sc1 = ax.scatter(target_x, target_y, target_z)  # Optional: color by time
+        ax.plot(pursuer_x, pursuer_y, pursuer_z, label='pursuer')
+        sc2 =ax.scatter(pursuer_x, pursuer_y, pursuer_z)  # Optional: color by time
 
-        # Add labels, legend, and grid
-        plt.xlabel('X Coordinate')
-        plt.ylabel('Y Coordinate')
-        plt.title('Collision Plot: Target vs Pursuer (Stopped at Collision)')
-        plt.legend()
-        plt.grid(True)
-        plt.axis('equal')  # Ensures equal scaling for x and y axes
+        
+        # Labels and title
+        ax.set_xlabel('X')
+        ax.set_ylabel('Y')
+        ax.set_zlabel('Z')
+        ax.set_title('3D Trajectory')
+
+        # Add legend
+        ax.legend()
+
+        # Show the plot
         plt.show()
         
     '''
@@ -58,10 +55,11 @@ class EngagementPlotter:
         names = ["aInI", "vInI", "rInI"]
         hists = [v.aInIhist, v.vInIhist, v.rInIhist]
         states = ["a(t) m/s^2", "v(t) m/s", "r(t) m"]
-        plt.figure(figNum)
+        fig = plt.figure()
+        
         for i,n in enumerate(names):
-            plt.subplot(3,1,i+1)
-            plt.plot(tvec,array(hists)[i][:, 0])
+            ax = fig.add_subplot(3,1,i+1, projection='3d')
+            ax.scatter(x2, y2, z2, color='red', s=10) 
             if len(title) >0:
                 plt.title(f"{title}: {states[i]}")
             else:
@@ -70,16 +68,85 @@ class EngagementPlotter:
             plt.grid(True)
         plt.tight_layout()
         plt.show()
-    
-    '''
-    @name:  plotVehiclesSubplots
-    @brief: plots pursuer accel, vel, pos in left col, and
-          target  accel, vel, pos in right col
-    '''
+    def plotStates3d(self, vehicle):
+
+        """
+        Plot position, velocity, and acceleration in 3D.
+        
+        Parameters:
+            pos: numpy array of shape (n, 3) representing position (x, y, z).
+            vel: numpy array of shape (n, 3) representing velocity (x, y, z).
+            accel: numpy array of shape (n, 3) representing acceleration (x, y, z).
+        """
+        # Create a figure with 3 subplots
+        fig = plt.figure(figsize=(15, 5))
+        titles = ['Position', 'Velocity', 'Acceleration']
+        data = [vehicle.rInIhist, vehicle.vInIhist, vehicle.aInIhist]
+        data = [np.array(d) for d in data]
+        for i, (array, title) in enumerate(zip(data, titles)):
+            ax = fig.add_subplot(1, 3, i + 1, projection='3d')
+            
+            # Extract x, y, z columns
+            x, y, z = array[:, 0], array[:, 1], array[:, 2]
+            
+            # Scatter plot with color by time
+            sc = ax.scatter(x, y, z, s=10)
+            ax.plot(x, y, z, color='gray', alpha=0.7)  # Optional: Connect points
+            
+            # Labels and title
+            ax.set_xlabel('X')
+            ax.set_ylabel('Y')
+            ax.set_zlabel('Z')
+            ax.set_title(title)
+                    
+        # Adjust layout
+        plt.tight_layout()
+        plt.show()
+    def plotStateProjections(self, tvec, target, pursuer, state='r'):
+        '''
+        @name:  plotprojections
+        @brief: plots pursuer (state) in x,y,z 
+                      target  (state) in x,y,z 
+        '''
+        if state == 'r':
+            stateName = "r(t)"
+            pdata = pursuer.rInIhist
+            tdata = target.rInIhist
+        elif state == 'v':
+            stateName = "v(t)"
+            pdata = pursuer.vInIhist
+            tdata = target.vInIhist
+        elif state == 'a':
+            stateName = "a(t)"
+            pdata = pursuer.aInIhist
+            tdata = target.aInIhist
+        pdata = array(pdata)
+        tdata = array(tdata)
+        # px, py, pz = pdata[:, 0], pdata[:, 1], pdata[:, 2]
+        # tx, ty, tz = tdata[:, 0], tdata[:, 1], tdata[:, 2]
+        fig, axez = plt.subplots(2, 3, figsize=(10, 12))  # Adjust figsize as needed
+        
+        playerNames = ["pursuer", "target"]
+        axesNames = ["x", "y", "z"]
+        for i in range(len(playerNames)):  # Rows
+            for j in range(len(axesNames)):  # Columns
+                axez[i, j].plot(tvec, pdata[:, j])  # Example plot
+                axez[i, j].set_title(f" {playerNames[i]} {stateName} {axesNames[j]}")  # Title for each subplot
+                axez[i,j].set_ylim(-100, 25)
+                axez[i, j].grid(True)  # Add grid
+        plt.tight_layout()
+        plt.show()
+        
+        
+            
+
     def plotVehiclesSubplots(self, tvec, p, t ):
+        '''
+        @name:  plotVehiclesSubplots
+        @brief: plots pursuer accel, vel, pos in left col, and
+              target  accel, vel, pos in right col
+        '''
         names = ["aInI", "vInI", "rInI"]
-        PURSUER = 1
-        TARGET = 2
         states = ["a(t) m/s^2", "v(t) m/s", "r(t) m"]
         pursuer_states = [p.aInIhist, p.vInIhist, p.rInIhist]
         target_states = [t.aInIhist, t.vInIhist, t.rInIhist ] 

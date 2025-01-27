@@ -49,3 +49,17 @@ def enter():
 def dbprint(*args):
     # Join the arguments with a space and prepend a tab
     print('\t', *args)
+def printDcm(dcm, title = ""):
+    
+    """
+    Utility function to print a Direction Cosine Matrix (DCM) with elements rounded to 2 decimal places.
+
+    Parameters:
+        dcm: A 3x3 numpy array representing the DCM.
+    """
+    if dcm.shape != (3, 3):
+        raise ValueError("Input must be a 3x3 matrix.")
+
+    print(f"---- {title} ---")
+    for row in dcm:
+        print("  ".join(f"{elem:.2f}" for elem in row))
