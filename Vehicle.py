@@ -59,7 +59,7 @@ class Pursuer(RigidBody):
         -accel: [ap_x, ap_z]
     '''
     def update(self, rotationSeq, accelCmdInI):
-        #db.enter()
+        self.updateIB(rotationSeq)
                  
         self.aInI = accelCmdInI
         self.vInI = self.vInI + self.aInI*self.dt
