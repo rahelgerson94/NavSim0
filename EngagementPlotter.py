@@ -1,277 +1,121 @@
-import matplotlib.pyplot as plt
 import numpy as np
-from numpy import array, allclose, deg2rad, cos, sin, arctan2
-from numpy.linalg import norm
+import debug as db
 
+from numpy import sin, cos, tan, pi, arctan2, arcsin, deg2rad, rad2deg
+from numpy import zeros, matmul, array
+from numpy.linalg import norm, inv
+from Vehicle import Pursuer
+from Vehicle import Target
+from math import asin
 X = 0
-Z = 1
+Y = 1
+Z = 2
 R = 0
 V = 1
-class EngagementPlotter:
-    def __init__(self):
-        self.collisionPoint = array([np.inf,np.inf])
+class Guide:
+    def __init__(self, pursuerObj, 
+                 targetObj, 
+                 HEdeg = -20, 
+                 N=3, 
+                 dt = 1/100,
+                 aMax  = [100, 0,  100],
+                 aMin = [-100, 0, -100]):
+        self.aCmdInI = 0
+        self.dt = dt 
+        self.N = N
+        self.zemInI = array([1, 1, 1])
+
+        self.HErad = deg2rad(HEdeg)
+        self.collisionLocationInI = np.inf
+        self.target = targetObj
+        self.pursuer = pursuerObj
+        self.zemHist = []
+        self.aCmdInIHist = []
+        self.VcHist = []
+        self.rRelInIhist = []
+        self.aMax = array(aMax)
+        self.aMin = array(aMin)
+        ''' for this specific sim, the los angle is rotation about the y axis
+        and represents the angle between the relative pos vector and the horizontal'''
+        self.losAngleRad = 0
         
-    def plotCollision(self, target_coords, pursuer_coords, title=""):
-        """
-        Plots the trajectories of the target and pursuer and stops at the collision point.
-
-        Parameters:
-        - target_coords: List of tuples representing the target's (x, y) coordinates over time.
-        - pursuer_coords: List of tuples representing the pursuer's (x, y) coordinates over time.
-        """
-        # Truncate at collision point
-        truncated_target = []
-        truncated_pursuer = []
-
-        for t, p in zip(target_coords, pursuer_coords):
-            truncated_target.append(t)
-            truncated_pursuer.append(p)
-            if np.abs(p[X] -  t[X]) <=  0.15 and\
-                np.abs(t[Z] - t[Z]) <= 0.15:
-                self.collisionPoint = array([t[0], t[1]])
-                print(f"collision at: ({self.collisionPoint[0]}, {self.collisionPoint[1]})")
-                break       
-        # Unpack truncated coordinates
-        target_x, target_y = zip(*truncated_target)
-        pursuer_x, pursuer_y = zip(*truncated_pursuer)
-
-        # Plot the truncated trajectories
-        plt.figure()
-        plt.plot(target_x, target_y, 'r-o', label='Target', linewidth=2, markersize=2)
-        plt.plot(pursuer_x, pursuer_y, 'g-o', label='Pursuer', linewidth=2, markersize=2)
-        plt.scatter(target_x[-1], target_y[-1], c='b', s=100, label='Collision Point', zorder=5)
-
-        # Add labels, legend, and grid
-        plt.xlabel('X Coordinate')
-        plt.ylabel('Y Coordinate')
-        plt.title('Collision Plot: Target vs Pursuer (Stopped at Collision)')
-        plt.legend()
-        plt.grid(True)
-        plt.axis('equal')  # Ensures equal scaling for x and y axes
-        plt.show()
-        
-    '''
-    @name:  plotVehicleStatesSubplots
-    @brief: plots a single vehicles accel, vel, pos 
-    '''
-    def plotVehicleStatesSubplots(self, tvec, v, title="", figNum = 0):
-        names = ["aInI", "vInI", "rInI"]
-        hists = [v.aInIhist, v.vInIhist, v.rInIhist]
-        states = ["a(t) m/s^2", "v(t) m/s", "r(t) m"]
-        plt.figure(figNum)
-        for i,n in enumerate(names):
-            plt.subplot(3,1,i+1)
-            plt.plot(tvec,array(hists)[i][:, 0])
-            if len(title) >0:
-                plt.title(f"{title}: {states[i]}")
-            else:
-                plt.title(f"Vehicle: {states[i]}")
-            plt.legend()
-            plt.grid(True)
-        plt.tight_layout()
-        plt.show()
     
+    def updateStates(self):
+        
+        rRelInI, vRelInI, _ = self.getRelativeStates()
+        RTP = norm(rRelInI)
+        self.tgo = RTP/norm(vRelInI)
+        #the states are output by pursuer, target in the intertial frames
+        self.zemInI  = rRelInI - vRelInI*self.tgo
+        
+        zemPerp = self.computeZemPlos(rRelInI)
+        self.aCmdInI  = array((self.N/ (self.tgo)**2) * (zemPerp))
+        print(f"[guide]: self.aCmdInI: {self.aCmdInI}")
+        
+        
+        self.losAngleRad = arctan2(rRelInI[Z], rRelInI[X]) #TODO: compute angles about the other axes
+
+    def computeZemPlos(self,rRelInI):
+        '''
+        compute the component of zem (m) thats perp. to line of sight. 
+        this is equal to the zem vector in the inertial frame (self.zemInI),
+        minus the  (unit length) component of self.zemInI along/parallel to the los.
+        '''
+        #zemPar the component of the zem vector parallel to the los
+        #zemPar  = np.dot(self.zemInI, rRelInI)   / (norm(rRelInI)*norm(self.zemInI)) *rRelInI  
+        zemDotRtp =  np.dot(self.zemInI, rRelInI)/ norm(rRelInI)
+        zemPar = zemDotRtp* rRelInI/norm(rRelInI)
+        zemPerp = self.zemInI - zemPar
+        return zemPerp
+    def getRelativeStates(self):
+        rRelInI = self.target.rInI - self.pursuer.rInI
+        vRelInI = self.target.vInI - self.pursuer.vInI
+        aRelInI = self.target.aInI - self.pursuer.aInI
+        return rRelInI, vRelInI, aRelInI
+    def update(self, pursuer, target):
+        db.enter()
+        self.target = target
+        self.pursuer = pursuer
+        self.updateStates( )
+        #self.updateDcms()
+
     '''
-    @name:  plotVehiclesSubplots
-    @brief: plots pursuer accel, vel, pos in left col, and
-          target  accel, vel, pos in right col
+    getAcmd: return the commanded accel for this 
+    timestep
     '''
-    def plotVehiclesSubplots(self, tvec, p, t ):
-        names = ["aInI", "vInI", "rInI"]
-        PURSUER = 1
-        TARGET = 2
-        states = ["a(t) m/s^2", "v(t) m/s", "r(t) m"]
-        pursuer_states = [p.aInIhist, p.vInIhist, p.rInIhist]
-        target_states = [t.aInIhist, t.vInIhist, t.rInIhist ] 
-         
-        # Create a 3x2 grid of subplots
-        fig, axes = plt.subplots(3, 2, figsize=(10, 12))  # Adjust figsize as needed
-        
-        
-        # Plot the data
-        for i, (pursuer, target) in enumerate(zip(pursuer_states, target_states)):
-            # Plot pursuer data in the first column
-            axes[i, 0].plot(tvec, pursuer, label="Pursuer")
-            #axes[i, 0].set_title(f"Pursuer {states[i]}")
-            axes[i, 0].set_xlabel("t (s)")
-            axes[i, 0].set_ylabel(states[i])
-            axes[i, 0].grid(True)
-            # Plot target data in the second column
-            axes[i, 1].plot(tvec, target, label="Target", color="orange")
-            #axes[i, 1].set_title(f"Target {states[i]}")
-            axes[i, 1].set_xlabel("t (s)")
-            axes[i, 1].set_ylabel(states[i])
-            axes[i, 1].grid(True)
-        # Add space between plots
-        plt.tight_layout()
-        plt.show()
-    def plotGuideVars(self, tvec, g, title=""):
-
-
-        names = {"d/dt(λ) (deg/s)",
-                 "λ (deg)",
-                 "Vc (m/s)",
-                 "L (deg)",
-                 "Rt/p (m)",
-                 }
-        hists = [g.lamdaDotHist,
-                 g.lamdaHist,
-                 g.VcHist,
-                 g.lookAngleHist,
-                 g.RrelHist]
-        for i, name in enumerate(names):
-            plt.figure(i)
-            
-            plt.plot(tvec, hists[i])
-            
-            if len(name) >0:
-                plt.title(f"{title}: {name}")
-            else:
-                plt.title(name)
-            plt.legend()
-            plt.grid(True)
-        plt.show()     
-        # Define functions for plotting engagement
-        
-    def plotEngagementFullScale(self, 
-                                   tvec, 
-                                   dt_index, 
-                                   miss_index,
-                                   betaTimeHist,
-                                   pursuerStateTimeHist,
-                                   targetStateTimeHist,
-                                   pnType, 
-                                   HEdeg = 20,
-                                   Np = 3,  
-                                   vid_file="off"):
-        
-        HE = deg2rad(HEdeg)
-        Rp = pursuerStateTimeHist[R]
-        Vp = pursuerStateTimeHist[V]
-        Rt = targetStateTimeHist[R]
-        Vt = targetStateTimeHist[V]
-        k = 1
-        for ii in range(0, len(tvec), dt_index):
-            if ii == 0:
-                #plt.figure(6)
-                plt.plot(Rp[0,X], Rp[0,Z], 'ob', label="Pursuer", markersize=5)
-                plt.plot(Rt[0,X], Rt[0,Z], 'or', label="Target", markersize=5)
-                plt.title(f"{pnType} ProNav, -{HEdeg} Deg, N = {Np}", fontsize=16)
-                plt.xlabel("Downrange [ft]", fontsize=16)
-                plt.ylabel("Altitude [ft]", fontsize=16)
-                plt.grid()
-                plt.axis("equal")
-                plt.xlim([0, 40000])
-                plt.ylim([6000, 12000])
-            
-            if ii > 0:
-                plt.plot(Rp[ii, X], Rp[ii-dt_index, Z], 'b-', linewidth=2, label="Pursuer")
-                plt.plot(Rt[ii, X], Rt[ii-dt_index, Z], 'r-', linewidth=2, label="Target")
-                plt.pause(0.1)
-
-            if vid_file == "on":
-                plt.savefig(f"frame_{k}.png")
-                k += 1
-
-        if vid_file == "on":
-            print("Save video using an external tool.")
-
-
-    def plotEngagementZoomed(self,
-                               pursuerStateTimeHist,
-                               pursuerAccelTimeHist,
-                               targetStateTimeHist,
-                               tvec, 
-                               pnType, 
-                               lambdaTimeHist, 
-                               dt_index, 
-                               vid_file="off"):
-        Rp = pursuerStateTimeHist[R]
-        Vp = pursuerStateTimeHist[V]
-        Rt = targetStateTimeHist[R]
-        Vt = targetStateTimeHist[V]
-        k = 1
-        for ii in range(0, len(tvec), dt_index):
-
-            plt.figure(7)
-            ph1 = plt.quiver(Rp[ii,X], Rp[ii-dt_index,Z], 
-                       Vp[ii,X], Vp[ii,Z], 
-                       color='b', scale=1, scale_units='xy')
-            plt.grid()
-            if ii > 0:
-                plt.plot(Rt[ii,X], Rt[ii-dt_index,X], 'r-', linewidth=2)
-                plt.plot(Rt[ii,Z], Rt[ii-dt_index,Z], 'r-', linewidth=2)
-
-                plt.plot(Rp[ii,X], Rp[ii-dt_index,X], 'b-', linewidth=2)
-                plt.plot(Rp[ii,Z], Rp[ii-dt_index,Z], 'b-', linewidth=2)
-            #  Determine pursuer acceleration vector
-            if pnType == 'Pure':
-                Heading_pursuer = np.atan2(Vp[ii,X], Vp[ii,Z]);
-                apx = -pursuerAccelTimeHist[ii] * np.sin(Heading_pursuer) * 8
-                apz = pursuerAccelTimeHist[ii] * np.cos(Heading_pursuer) * 8
-            elif pnType == 'True':
-                ph2 = plt.plot(Rp[ii,X], Rp[ii-dt_index,X], 'b-', linewidth=2)
-                ph2a = plt.plot(Rp[ii,Z], Rp[ii-dt_index,Z], 'b-', linewidth=2)
-                apx = -pursuerAccelTimeHist[ii]*sin(lambdaTimeHist[ii])*8;
-                apz =  pursuerAccelTimeHist[ii]*cos(lambdaTimeHist[ii])*8;
-            #Plot pursuer acceleration vector
-            ph3 = plt.quiver(Rp[ii,X], Rp[ii-dt_index,Z], 
-                       apx, apz, 
-                       color='b', scale=1, scale_units='xy')
-            # Plot pursuer point
-            ph4 = plt.plot(Rp[ii, X], Rp[ii, Z], 'b-', linewidth=2)
+    def getAcmdInI(self):
+        self.clipAccel()
+        return self.aCmdInI
+    def clipAccel(self):
        
-            plt.xlim([Rp[ii, X] - 4000, Rp[ii, X] + 4000])
-            plt.xlim([Rp[ii, Z] - 4000, Rp[ii, Z] + 4000])
-
-            plt.title(f"Engagement Visualization - {pnType} ProNav", fontsize=14)
-            plt.grid()
-            plt.pause(0.1)
-
-            if vid_file == "on":
-                plt.savefig(f"zoomed_frame_{k}.png")
-                k += 1
-        #Delete plots for next frame
-        if pnType == 'True':
-            ph2.remove()
-            ph2a.remove()
-        ph1.remove()
-        ph3.remove()
-        ph4.remove()
-       
+        if self.aCmdInI[X] > self.aMax[X]:
+             self.aCmdInI[X] = self.aMax[X]
+        if self.aCmdInI[Y] > self.aMax[Y]:
+             self.aCmdInI[Y] = self.aMax[Y]
+        if self.aCmdInI[Z] > self.aMax[Z]:
+             self.aCmdInI[Z] = self.aMax[Z]
+             
+             
+        if self.aCmdInI[X] < self.aMin[X]:
+             self.aCmdInI[X] = self.aMin[X]
+        if self.aCmdInI[Y] < self.aMin[Y]:
+             self.aCmdInI[Y] = self.aMin[Y]
+        if self.aCmdInI[Z] < self.aMin[Z]:
+             self.aCmdInI[Z] = self.aMin[Z]        
+    def storeStates(self):
+        self.zemHist.append(self.zemInI)
+        self.aCmdInIHist.append(self.aCmdInI)
+        self.rRelInIhist.append(self.target.rInI - self.pursuer.rInI)
     
-
-    def plot_late_engagement(self, yout, tvec, pnType, dt_index, miss_index, vid_file="off"):
-        k = 1
-        plt.figure(8)
-        for ii in range(907, miss_index + dt_index, dt_index):
-            plt.plot([yout[ii, 1], yout[ii - dt_index * 4, 1]],
-                    [yout[ii, 2], yout[ii - dt_index * 4, 2]], 'r.-', linewidth=1, markersize=14)
-            plt.plot([yout[ii, 3], yout[ii - dt_index * 4, 3]],
-                    [yout[ii, 4], yout[ii - dt_index * 4, 4]], 'b.-', linewidth=1, markersize=14)
-            plt.plot([yout[ii, 3], yout[ii, 1]],
-                    [yout[ii, 4], yout[ii, 2]], 'k--', linewidth=1)
-
-            if k == 1:
-                plt.xlabel("Downrange [ft]", fontsize=16)
-                plt.ylabel("Altitude [ft]", fontsize=16)
-                plt.title(f"Collision Triangle Visualization - {pnType} ProNav", fontsize=16)
-                plt.grid()
-
-            plt.pause(0.1)
-
-            if vid_file == "on":
-                plt.savefig(f"late_frame_{k}.png")
-                k += 1
-
-        if vid_file == "on":
-            print("Save video using an external tool.")
-if __name__ == "__main__":
-    # Example of how to use plotting functions
-    ep = EngagementPlotter()
-    dt_index = int(0.1 / 0.01)  # Assuming h = 0.01
-    yout = np.array(yout)  # Ensure yout is a NumPy array
-    ep.plotEngagementFullScale(yout, t, pnType, Np, dt_index, len(yout) - 1)
-    ep.plotEngagementZoomed(yout, t, pnType, aM, RTMx, RTMz, lambda_, dt_index)
-    #ep.plot_late_engagement(yout, t, pnType, dt_index, len(yout) - 1)
-
+    def getZemInI(self):
+        return self.zemInI
+        
+    def setCollisionPoint(self, coord):
+        self.collisionLocationInI = coord
+    def getLosAngleRad(self):
+        return self.losAngleRad
+    def printState(self):  
+        
+        print(f"zemInI: [", end='')
+        print("  ".join(f"{elem:.2f}" for elem in self.zemInI), end='')
+        print("]")
