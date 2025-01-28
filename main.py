@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
     VtMag = 2 #m/s
     at0mag = 0
-    AtInT0 = at0mag*array([0,0,0]) #in the BODY frame
+    AtInT0 = at0mag*array([0,0,5]) #in the BODY frame
     VtInT0 = VtMag*array([1,0,0]) #in the BODY frame
     RtInI0 = array([60, 0, 16]) #in the INERTIAL frame
     tRotSeqDeg = [0,180+40,0]
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     rRel0 = RtInI0 - RpInI0 
     
     loasAngleRad0 = arctan2(rRel0[Z], rRel0[X])
-    pRotSeqDeg = [0,0,0]
+    pRotSeqDeg = [0,30,0]
     pursuer = Pursuer(ApInP0, 
                       pRotSeqDeg, 
                       HEdeg0 , 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     
     n = 0
     NMAX = int( (tend - tstart)/dt)
-    while guide.tgo > 0.01:
+    while guide.tgo > 0.1 : #and n < NMAX:
         guide.update(pursuer, target)
         guide.storeStates()
         
@@ -106,6 +106,7 @@ if __name__ == "__main__":
 
         n+=1
         tvec.append(n*dt)
+    print(f"guide.tgo: {guide.tgo}")
     ep = EngagementPlotter()
     #ep.plotVehiclesSubplots(tvec[0:n], pursuer, target)
     # ep.plotVehicleStatesSubplots(tvec[0:n], pursuer, "pursuer", figNum = 0)

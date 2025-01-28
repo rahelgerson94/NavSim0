@@ -31,9 +31,9 @@ class EngagementPlotter:
             sc2 = ax.scatter(pursuer_x, pursuer_y, pursuer_z, c=tvec, cmap='plasma', label='pursuer',s = 2)
         
             # Add a color bar for each trajectory to show time info
-            cbar1 = fig.colorbar(sc1, ax=ax, pad=0.1, shrink=0.5, location='left')
+            cbar1 = fig.colorbar(sc1, ax=ax, pad=0.1, shrink=0.5)
             cbar1.set_label('time (target)')
-            cbar2 = fig.colorbar(sc2, ax=ax, pad=0.1, shrink=0.5)
+            cbar2 = fig.colorbar(sc2, ax=ax, pad=0.1, shrink=0.5, location='left')
             cbar2.set_label('time (pursuer)')
         else:
             

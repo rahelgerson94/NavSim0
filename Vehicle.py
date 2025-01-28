@@ -24,15 +24,11 @@ class Target(RigidBody):
                          dt=dt )
         
         self.t = 0
-        
-        
+             
     def update(self, rotationSeqeunce, aInB):
         self.t += self.dt
         super().update(rotationSeqeunce, aInB)
-        
-        
-
-        
+    
     def printStates(self, rbodyName="target"):
         print(f"------{rbodyName} states--------")
        
