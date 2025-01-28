@@ -6,6 +6,23 @@ from numpy.linalg import norm
 import matplotlib.pyplot as plt
 from EngagementPlotter import EngagementPlotter
 import debug as db
+X = 0
+Y = 1
+Z = 2
+def computeAngleBtwVecsDeg(v1, v2):
+    v1 = array(v1)
+    v2 = array(v2)
+    if v1[X] > 0 and v1[Z] > 0: 
+        thetaRad =  np.arccos((np.dot(v1,v2))/(norm(v2)*norm(v1)))
+    if v1[X] < 0 and v1[Z] > 0: 
+        thetaRad =  np.arccos((np.dot(v1,v2))/(norm(v2)*norm(v1)))  
+    if v1[X] < 0 and v1[Z] < 0: 
+        thetaRad = 2*pi - np.arccos((np.dot(v1,v2))/(norm(v2)*norm(v1))) 
+    if v1[X] > 0 and v1[Z] < 0: 
+        thetaRad = 2*pi - np.arccos((np.dot(v1,v2))/(norm(v2)*norm(v1))) 
+    
+    return thetaRad*(180/pi)
+
 class Target(RigidBody):
     def __init__(self, 
                  accel0InT,
@@ -25,9 +42,28 @@ class Target(RigidBody):
         
         self.t = 0
              
-    def update(self, rotationSeqeunce, aInB):
+    def update(self, aInB):
         self.t += self.dt
-        super().update(rotationSeqeunce, aInB)
+        
+        '''
+        compute states in inertial frame
+        '''
+        self.aInI = matmul(self.IB, aInB)
+        self.vInI = self.vInI + self.aInI*self.dt
+        self.rInI = self.rInI + self.vInI*self.dt
+        #TODO: be able to compute the angles between each axis.
+        #currently, this works for rots about the y-axis only
+        '''
+        find the angle btw body & inertial x axis
+        by computing the dot product of the body velocty vector
+        in inertial frame, and iHat. This assumes the target's 
+        vecloty vector is aligned with its nose. 
+        '''
+        iHat = [1,0,0]
+        thetaYDeg = computeAngleBtwVecsDeg(self.vInI, iHat)
+        self.updateIB([0,thetaYDeg,0])
+        #print(thetaYDeg)
+        
     
     def printStates(self, rbodyName="target"):
         print(f"------{rbodyName} states--------")
@@ -54,8 +90,8 @@ class Pursuer(RigidBody):
         requires, lmabda,S L, accel from guidance
         -accel: [ap_x, ap_z]
     '''
-    def update(self, rotationSeq, accelCmdInI):
-        self.updateIB(rotationSeq)
+    def update(self, accelCmdInI):
+        
                  
         self.aInI = accelCmdInI
         self.vInI = self.vInI + self.aInI*self.dt
